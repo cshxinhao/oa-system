@@ -1,0 +1,19 @@
+[Unit]
+Description=oa-system Django (gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/oa-system/current
+EnvironmentFile=/opt/oa-system/.env
+RuntimeDirectory=oa-system
+ExecStart=/opt/oa-system/venv/bin/gunicorn -c /opt/oa-system/current/deploy/gunicorn.conf.py oa_system.wsgi:application
+Restart=always
+RestartSec=3
+KillSignal=SIGQUIT
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+
+{% block page_title %}仪表盘{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- 快捷入口 -->
+    <div class="col-md-6 col-lg-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-calendar-plus"></i> 申请请假</h5>
+                <p class="card-text">快速发起新的请假申请</p>
+                <a href="{% url 'hr:leave_create' %}" class="btn btn-light text-primary stretched-link">去申请</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-lg-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-upload"></i> 上传文档</h5>
+                <p class="card-text">分享文件给团队成员</p>
+                <a href="{% url 'docs:doc_create' %}" class="btn btn-light text-success stretched-link">去上传</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- 公告栏 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h5 class="card-title mb-0"><i class="bi bi-megaphone"></i> 最新公告</h5>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for notice in notices %}
+                <div class="list-group-item">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">{{ notice.title }}</h6>
+                        <small class="text-muted">{{ notice.published_at|date:"m-d" }}</small>
+                    </div>
+                    <p class="mb-1 text-muted small">{{ notice.content|truncatechars:50 }}</p>
+                </div>
+                {% empty %}
+                <div class="list-group-item text-center text-muted">暂无公告</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- 请假审批 / 待办 -->
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                {% if can_approve %}
+                  <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0"><i class="bi bi-clipboard-check"></i> 请假审批</h5>
+                    <a href="{% url 'hr:leave_list' %}" class="btn btn-sm btn-outline-secondary">查看全部</a>
+                  </div>
+                {% else %}
+                  <h5 class="card-title mb-0"><i class="bi bi-check2-square"></i> 我的待办</h5>
+                {% endif %}
+            </div>
+            {% if can_approve %}
+              <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                  <thead>
+                    <tr>
+                      <th>申请人</th>
+                      <th>部门</th>
+                      <th>时间段</th>
+                      <th>事由</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for leave in pending_leaves %}
+                      <tr>
+                        <td>{{ leave.applicant.get_full_name|default:leave.applicant.username }}</td>
+                        <td>{{ leave.applicant.department.name|default:"-" }}</td>
+                        <td>{{ leave.start_date }} 至 {{ leave.end_date }}</td>
+                        <td title="{{ leave.reason }}">{{ leave.reason|truncatechars:20 }}</td>
+                        <td>
+                          <div class="btn-group btn-group-sm" role="group">
+                            <form action="{% url 'hr:leave_approve' leave.pk %}" method="post" class="d-inline">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-success" onclick="return confirm('确认批准？')">批准</button>
+                            </form>
+                            <form action="{% url 'hr:leave_reject' leave.pk %}" method="post" class="d-inline ms-1">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-danger" onclick="return confirm('确认拒绝？')">拒绝</button>
+                            </form>
+                          </div>
+                        </td>
+                      </tr>
+                    {% empty %}
+                      <tr>
+                        <td colspan="5" class="text-center text-muted py-4">暂无待审批请假</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="card-body">
+                  <p class="text-muted text-center">暂无待办事项</p>
+              </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
