@@ -9,6 +9,7 @@
 - /opt/oa-system/.env：环境变量文件（参考 deploy/.env.example）
 - /opt/oa-system/shared/staticfiles：collectstatic 输出目录
 - /opt/oa-system/shared/media：上传文件持久化目录
+- /opt/oa-system/shared/db.sqlite3：SQLite 数据库（可选，推荐放 shared 便于权限管理）
 
 ## 服务器准备
 
@@ -48,6 +49,7 @@ cp /opt/oa-system/current/deploy/.env.example /opt/oa-system/.env
 ```bash
 cd /opt/oa-system/current
 mkdir -p /opt/oa-system/shared/staticfiles /opt/oa-system/shared/media
+touch /opt/oa-system/shared/db.sqlite3
 set -a
 . /opt/oa-system/.env
 set +a
@@ -56,6 +58,8 @@ set +a
 ```
 
 如果你暂时使用 SQLite，db.sqlite3 位于 current 目录；升级到 PostgreSQL/MySQL 时建议将数据库改为独立服务。
+
+如果你暂时使用 SQLite，建议通过环境变量 DJANGO_SQLITE_PATH 把数据库放在 shared 目录（避免代码目录权限问题）；升级到 PostgreSQL/MySQL 时建议将数据库改为独立服务。
 
 ## 配置 systemd（Gunicorn）
 
