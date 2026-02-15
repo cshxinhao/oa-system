@@ -23,9 +23,9 @@
         <div class="nav-item text-nowrap">
           {% if user.is_authenticated %}
             <span class="nav-link px-3 text-light">欢迎, {{ user.get_full_name|default:user.username }}</span>
-            <a class="nav-link px-3" href="/admin/logout/">退出</a>
+            <a class="nav-link px-3" href="/accounts/logout/">退出</a>
           {% else %}
-            <a class="nav-link px-3" href="/admin/login/">登录</a>
+            <a class="nav-link px-3" href="/accounts/login/">登录</a>
           {% endif %}
         </div>
       </div>
