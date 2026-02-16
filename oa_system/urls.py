@@ -5,11 +5,14 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 from core.views import UserViewSet, DepartmentViewSet, index
 from admin_office.views import NoticeViewSet
+from meeting.api import MeetingRoomViewSet, RoomBookingViewSet
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
 router.register(r'departments', DepartmentViewSet)
 router.register(r'notices', NoticeViewSet)
+router.register(r'meeting-rooms', MeetingRoomViewSet)
+router.register(r'room-bookings', RoomBookingViewSet)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -21,6 +24,7 @@ urlpatterns = [
      path("", index, name='index'),
      path("hr/", include('hr.urls', namespace='hr')),
      path("docs/", include('docs.urls', namespace='docs')),
+     path("meeting/", include('meeting.urls', namespace='meeting')),
 ]
 
 if settings.DEBUG:

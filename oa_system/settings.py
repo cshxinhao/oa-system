@@ -77,6 +77,7 @@ INSTALLED_APPS = [
     "finance",
     "admin_office",
     "docs",
+    "meeting",
 ]
 
 MIDDLEWARE = [

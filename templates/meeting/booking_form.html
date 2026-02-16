@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block page_title %}新建会议室预订{% endblock %}
+
+{% block actions %}
+  <a href="{% url 'meeting:booking_list' %}" class="btn btn-sm btn-outline-secondary">返回列表</a>
+{% endblock %}
+
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+              <div class="alert alert-danger">
+                {{ form.non_field_errors }}
+              </div>
+            {% endif %}
+
+            <div class="mb-3">
+              <label class="form-label">{{ form.room.label }}</label>
+              {{ form.room }}
+              {% if form.room.errors %}<div class="text-danger small mt-1">{{ form.room.errors }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">{{ form.title.label }}</label>
+              {{ form.title }}
+              {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors }}</div>{% endif %}
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">{{ form.start_at.label }}</label>
+                {{ form.start_at }}
+                {% if form.start_at.errors %}<div class="text-danger small mt-1">{{ form.start_at.errors }}</div>{% endif %}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">{{ form.end_at.label }}</label>
+                {{ form.end_at }}
+                {% if form.end_at.errors %}<div class="text-danger small mt-1">{{ form.end_at.errors }}</div>{% endif %}
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">提交预订</button>
+            <a href="{% url 'meeting:availability' %}" class="btn btn-link">先查可用时间</a>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
