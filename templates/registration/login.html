@@ -1,14 +1,18 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}登录 - OA 系统{% endblock %}
-{% block page_title %}登录{% endblock %}
+{% block title %}Login - OA System{% endblock %}
+{% block page_title %}Login{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
   <div class="col-12 col-md-6 col-lg-4">
+    <div class="text-center mb-4">
+      <img src="{% static 'img/logo.jpg' %}" alt="Logo" width="72" height="57">
+    </div>
     {% if form.errors %}
       <div class="alert alert-danger" role="alert">
-        用户名或密码不正确，请重试。
+        Incorrect username or password, please try again.
       </div>
     {% endif %}
 
@@ -17,16 +21,16 @@
       <input type="hidden" name="next" value="{{ next }}">
 
       <div class="mb-3">
-        <label for="id_username" class="form-label">用户名</label>
+        <label for="id_username" class="form-label">Username</label>
         <input type="text" name="username" autofocus autocapitalize="none" autocomplete="username" maxlength="150" required id="id_username" class="form-control">
       </div>
 
       <div class="mb-3">
-        <label for="id_password" class="form-label">密码</label>
+        <label for="id_password" class="form-label">Password</label>
         <input type="password" name="password" autocomplete="current-password" required id="id_password" class="form-control">
       </div>
 
-      <button type="submit" class="btn btn-primary w-100">登录</button>
+      <button type="submit" class="btn btn-primary w-100">Login</button>
     </form>
   </div>
 </div>

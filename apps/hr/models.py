@@ -10,10 +10,10 @@ class LeaveApplication(models.Model):
     STATUS_REJECTED = 'rejected'
 
     STATUS_CHOICES = (
-        (STATUS_DRAFT, _('草稿')),
-        (STATUS_PENDING, _('待审批')),
-        (STATUS_APPROVED, _('已批准')),
-        (STATUS_REJECTED, _('已拒绝')),
+        (STATUS_DRAFT, _('Draft')),
+        (STATUS_PENDING, _('Pending')),
+        (STATUS_APPROVED, _('Approved')),
+        (STATUS_REJECTED, _('Rejected')),
     )
 
     TYPE_SICK = 'sick'
@@ -21,27 +21,27 @@ class LeaveApplication(models.Model):
     TYPE_PERSONAL = 'personal'
     
     TYPE_CHOICES = (
-        (TYPE_SICK, _('病假')),
-        (TYPE_ANNUAL, _('年假')),
-        (TYPE_PERSONAL, _('事假')),
+        (TYPE_SICK, _('Sick Leave')),
+        (TYPE_ANNUAL, _('Annual Leave')),
+        (TYPE_PERSONAL, _('Personal Leave')),
     )
 
     applicant = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
-        verbose_name=_("申请人"), 
+        verbose_name=_("Applicant"), 
         on_delete=models.CASCADE,
         related_name='leave_applications'
     )
-    leave_type = models.CharField(_("请假类型"), max_length=20, choices=TYPE_CHOICES, default=TYPE_SICK)
-    start_date = models.DateField(_("开始日期"))
-    end_date = models.DateField(_("结束日期"))
-    reason = models.TextField(_("请假事由"))
+    leave_type = models.CharField(_("Leave Type"), max_length=20, choices=TYPE_CHOICES, default=TYPE_SICK)
+    start_date = models.DateField(_("Start Date"))
+    end_date = models.DateField(_("End Date"))
+    reason = models.TextField(_("Reason"))
     
-    status = FSMField(_("状态"), default=STATUS_DRAFT, choices=STATUS_CHOICES, protected=True)
+    status = FSMField(_("Status"), default=STATUS_DRAFT, choices=STATUS_CHOICES, protected=True)
     
     reviewer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name=_("审批人"),
+        verbose_name=_("Reviewer"),
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -52,8 +52,8 @@ class LeaveApplication(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = _("请假申请")
-        verbose_name_plural = _("请假申请")
+        verbose_name = _("Leave Application")
+        verbose_name_plural = _("Leave Applications")
         ordering = ['-created_at']
 
     def __str__(self):

@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block page_title %}可用时间查询{% endblock %}
+{% block page_title %}Check Availability{% endblock %}
 
 {% block actions %}
-  <a href="{% url 'meeting:booking_create' %}" class="btn btn-sm btn-primary">新建预订</a>
-  <a href="{% url 'meeting:booking_list' %}" class="btn btn-sm btn-outline-secondary ms-2">我的预订</a>
+  <a href="{% url 'meeting:booking_create' %}" class="btn btn-sm btn-primary">New Booking</a>
+  <a href="{% url 'meeting:booking_list' %}" class="btn btn-sm btn-outline-secondary ms-2">My Bookings</a>
 {% endblock %}
 
 {% block content %}
@@ -12,7 +12,7 @@
     <div class="col-lg-6">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
-          <h5 class="card-title mb-0">按时间窗查可用会议室</h5>
+          <h5 class="card-title mb-0">Search Available Rooms by Time Window</h5>
         </div>
         <div class="card-body">
           <form method="get">
@@ -31,7 +31,7 @@
                 {% if window_form.end_at.errors %}<div class="text-danger small mt-1">{{ window_form.end_at.errors }}</div>{% endif %}
               </div>
             </div>
-            <button type="submit" class="btn btn-outline-primary">查询</button>
+            <button type="submit" class="btn btn-outline-primary">Search</button>
           </form>
         </div>
         {% if window_searched %}
@@ -40,12 +40,12 @@
               <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                   <div class="fw-semibold">{{ room.name }}</div>
-                  <div class="text-muted small">{{ room.location|default:"" }}{% if room.capacity %} · {{ room.capacity }} 人{% endif %}</div>
+                  <div class="text-muted small">{{ room.location|default:"" }}{% if room.capacity %} · {{ room.capacity }} people{% endif %}</div>
                 </div>
-                <a href="{% url 'meeting:booking_create' %}?room={{ room.id }}" class="btn btn-sm btn-primary">预订</a>
+                <a href="{% url 'meeting:booking_create' %}?room={{ room.id }}" class="btn btn-sm btn-primary">Book</a>
               </div>
             {% empty %}
-              <div class="list-group-item text-center text-muted py-4">该时间段无可用会议室</div>
+              <div class="list-group-item text-center text-muted py-4">No rooms available for this time slot</div>
             {% endfor %}
           </div>
         {% endif %}
@@ -55,7 +55,7 @@
     <div class="col-lg-6">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
-          <h5 class="card-title mb-0">按会议室查当天空闲时段</h5>
+          <h5 class="card-title mb-0">Check Daily Free Slots by Room</h5>
         </div>
         <div class="card-body">
           <form method="get">
@@ -84,24 +84,24 @@
                 {% if slots_form.day_end.errors %}<div class="text-danger small mt-1">{{ slots_form.day_end.errors }}</div>{% endif %}
               </div>
             </div>
-            <button type="submit" class="btn btn-outline-primary">查询</button>
+            <button type="submit" class="btn btn-outline-primary">Search</button>
           </form>
         </div>
 
         {% if slots_searched %}
           <div class="card-body border-top">
-            <div class="fw-semibold mb-2">{{ free_slots_room.name }} 空闲时段</div>
+            <div class="fw-semibold mb-2">{{ free_slots_room.name }} Free Slots</div>
             {% if free_slots %}
               <ul class="list-group">
                 {% for slot in free_slots %}
                   <li class="list-group-item d-flex justify-content-between align-items-center">
                     <span>{{ slot.start|date:"H:i" }} - {{ slot.end|date:"H:i" }}</span>
-                    <a href="{% url 'meeting:booking_create' %}?room={{ free_slots_room.id }}&start_at={{ slot.start|date:'Y-m-d\\TH:i' }}&end_at={{ slot.end|date:'Y-m-d\\TH:i' }}" class="btn btn-sm btn-primary">预订</a>
+                    <a href="{% url 'meeting:booking_create' %}?room={{ free_slots_room.id }}&start_at={{ slot.start|date:'Y-m-d\\TH:i' }}&end_at={{ slot.end|date:'Y-m-d\\TH:i' }}" class="btn btn-sm btn-primary">Book</a>
                   </li>
                 {% endfor %}
               </ul>
             {% else %}
-              <div class="text-muted">该时间窗内无空闲时段</div>
+              <div class="text-muted">No free slots in this time window</div>
             {% endif %}
           </div>
         {% endif %}

@@ -1,45 +1,45 @@
 {% extends 'base.html' %}
 
-{% block page_title %}仪表盘{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
 
 {% block content %}
 <div class="row g-4 mb-4">
-    <!-- 快捷入口 -->
+    <!-- Quick Access -->
     <div class="col-md-6 col-lg-3">
         <div class="card bg-primary text-white h-100">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-calendar-plus"></i> 申请请假</h5>
-                <p class="card-text">快速发起新的请假申请</p>
-                <a href="{% url 'hr:leave_create' %}" class="btn btn-light text-primary stretched-link">去申请</a>
+                <h5 class="card-title"><i class="bi bi-calendar-plus"></i> Apply for Leave</h5>
+                <p class="card-text">Quickly start a new leave application</p>
+                <a href="{% url 'hr:leave_create' %}" class="btn btn-light text-primary stretched-link">Apply</a>
             </div>
         </div>
     </div>
     <div class="col-md-6 col-lg-3">
         <div class="card bg-success text-white h-100">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-upload"></i> 上传文档</h5>
-                <p class="card-text">分享文件给团队成员</p>
-                <a href="{% url 'docs:doc_create' %}" class="btn btn-light text-success stretched-link">去上传</a>
+                <h5 class="card-title"><i class="bi bi-upload"></i> Upload Document</h5>
+                <p class="card-text">Share files with team members</p>
+                <a href="{% url 'docs:doc_create' %}" class="btn btn-light text-success stretched-link">Upload</a>
             </div>
         </div>
     </div>
     <div class="col-md-6 col-lg-3">
         <div class="card bg-warning text-dark h-100">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-door-open"></i> 预订会议室</h5>
-                <p class="card-text">查询可用时间并创建预订</p>
-                <a href="{% url 'meeting:availability' %}" class="btn btn-light text-dark stretched-link">去预订</a>
+                <h5 class="card-title"><i class="bi bi-door-open"></i> Book Meeting Room</h5>
+                <p class="card-text">Check availability and book</p>
+                <a href="{% url 'meeting:availability' %}" class="btn btn-light text-dark stretched-link">Book</a>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row">
-    <!-- 公告栏 -->
+    <!-- Announcements -->
     <div class="col-md-6">
         <div class="card shadow-sm">
             <div class="card-header bg-white">
-                <h5 class="card-title mb-0"><i class="bi bi-megaphone"></i> 最新公告</h5>
+                <h5 class="card-title mb-0"><i class="bi bi-megaphone"></i> Latest Announcements</h5>
             </div>
             <div class="list-group list-group-flush">
                 {% for notice in notices %}
@@ -51,23 +51,23 @@
                     <p class="mb-1 text-muted small">{{ notice.content|truncatechars:50 }}</p>
                 </div>
                 {% empty %}
-                <div class="list-group-item text-center text-muted">暂无公告</div>
+                <div class="list-group-item text-center text-muted">No announcements</div>
                 {% endfor %}
             </div>
         </div>
     </div>
 
-    <!-- 请假审批 / 待办 -->
+    <!-- Leave Approval / To-Do -->
     <div class="col-md-6">
         <div class="card shadow-sm">
             <div class="card-header bg-white">
                 {% if can_approve %}
                   <div class="d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0"><i class="bi bi-clipboard-check"></i> 请假审批</h5>
-                    <a href="{% url 'hr:leave_list' %}" class="btn btn-sm btn-outline-secondary">查看全部</a>
+                    <h5 class="card-title mb-0"><i class="bi bi-clipboard-check"></i> Leave Approval</h5>
+                    <a href="{% url 'hr:leave_list' %}" class="btn btn-sm btn-outline-secondary">View All</a>
                   </div>
                 {% else %}
-                  <h5 class="card-title mb-0"><i class="bi bi-check2-square"></i> 我的待办</h5>
+                  <h5 class="card-title mb-0"><i class="bi bi-check2-square"></i> My To-Do</h5>
                 {% endif %}
             </div>
             {% if can_approve %}
@@ -75,11 +75,11 @@
                 <table class="table table-sm table-striped mb-0">
                   <thead>
                     <tr>
-                      <th>申请人</th>
-                      <th>部门</th>
-                      <th>时间段</th>
-                      <th>事由</th>
-                      <th>操作</th>
+                      <th>Applicant</th>
+                      <th>Department</th>
+                      <th>Duration</th>
+                      <th>Reason</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -87,24 +87,24 @@
                       <tr>
                         <td>{{ leave.applicant.get_full_name|default:leave.applicant.username }}</td>
                         <td>{{ leave.applicant.department.name|default:"-" }}</td>
-                        <td>{{ leave.start_date }} 至 {{ leave.end_date }}</td>
+                        <td>{{ leave.start_date }} to {{ leave.end_date }}</td>
                         <td title="{{ leave.reason }}">{{ leave.reason|truncatechars:20 }}</td>
                         <td>
                           <div class="btn-group btn-group-sm" role="group">
                             <form action="{% url 'hr:leave_approve' leave.pk %}" method="post" class="d-inline">
                               {% csrf_token %}
-                              <button type="submit" class="btn btn-success" onclick="return confirm('确认批准？')">批准</button>
+                              <button type="submit" class="btn btn-success" onclick="return confirm('Confirm approval?')">Approve</button>
                             </form>
                             <form action="{% url 'hr:leave_reject' leave.pk %}" method="post" class="d-inline ms-1">
                               {% csrf_token %}
-                              <button type="submit" class="btn btn-danger" onclick="return confirm('确认拒绝？')">拒绝</button>
+                              <button type="submit" class="btn btn-danger" onclick="return confirm('Confirm rejection?')">Reject</button>
                             </form>
                           </div>
                         </td>
                       </tr>
                     {% empty %}
                       <tr>
-                        <td colspan="5" class="text-center text-muted py-4">暂无待审批请假</td>
+                        <td colspan="5" class="text-center text-muted py-4">No pending leave approvals</td>
                       </tr>
                     {% endfor %}
                   </tbody>
@@ -112,7 +112,7 @@
               </div>
             {% else %}
               <div class="card-body">
-                  <p class="text-muted text-center">暂无待办事项</p>
+                  <p class="text-muted text-center">No to-do items</p>
               </div>
             {% endif %}
         </div>

@@ -1,27 +1,27 @@
 {% extends 'base.html' %}
 
-{% block page_title %}会议室预订{% endblock %}
+{% block page_title %}Meeting Room Booking{% endblock %}
 
 {% block actions %}
-  <a href="{% url 'meeting:availability' %}" class="btn btn-sm btn-outline-secondary">可用时间查询</a>
-  <a href="{% url 'meeting:booking_create' %}" class="btn btn-sm btn-primary ms-2">新建预订</a>
+  <a href="{% url 'meeting:availability' %}" class="btn btn-sm btn-outline-secondary">Check Availability</a>
+  <a href="{% url 'meeting:booking_create' %}" class="btn btn-sm btn-primary ms-2">New Booking</a>
 {% endblock %}
 
 {% block content %}
   <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-      <h5 class="card-title mb-0">我的预订</h5>
+      <h5 class="card-title mb-0">My Bookings</h5>
     </div>
     <div class="table-responsive">
       <table class="table table-striped mb-0">
         <thead>
           <tr>
-            <th>会议室</th>
-            <th>主题</th>
-            <th>开始</th>
-            <th>结束</th>
-            <th>状态</th>
-            <th>操作</th>
+            <th>Room</th>
+            <th>Title</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -33,16 +33,16 @@
               <td>{{ booking.end_at|date:"Y-m-d H:i" }}</td>
               <td>
                 {% if booking.status == 'booked' %}
-                  <span class="badge bg-success">已预订</span>
+                  <span class="badge bg-success">Booked</span>
                 {% else %}
-                  <span class="badge bg-secondary">已取消</span>
+                  <span class="badge bg-secondary">Canceled</span>
                 {% endif %}
               </td>
               <td>
                 {% if booking.status == 'booked' %}
                   <form action="{% url 'meeting:booking_cancel' booking.pk %}" method="post" class="d-inline">
                     {% csrf_token %}
-                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('确认取消该预订？')">取消</button>
+                    <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Confirm cancellation?')">Cancel</button>
                   </form>
                 {% else %}
                   <span class="text-muted">-</span>
@@ -51,7 +51,7 @@
             </tr>
           {% empty %}
             <tr>
-              <td colspan="6" class="text-center text-muted py-4">暂无预订</td>
+              <td colspan="6" class="text-center text-muted py-4">No bookings found</td>
             </tr>
           {% endfor %}
         </tbody>

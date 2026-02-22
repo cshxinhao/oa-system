@@ -6,17 +6,17 @@ from django.utils.translation import gettext_lazy as _
 
 
 class MeetingRoom(models.Model):
-    name = models.CharField(_("会议室名称"), max_length=100, unique=True)
-    location = models.CharField(_("位置"), max_length=200, blank=True)
-    capacity = models.PositiveIntegerField(_("容纳人数"), default=0)
-    is_active = models.BooleanField(_("可用"), default=True)
-    description = models.TextField(_("描述"), blank=True)
+    name = models.CharField(_("Room Name"), max_length=100, unique=True)
+    location = models.CharField(_("Location"), max_length=200, blank=True)
+    capacity = models.PositiveIntegerField(_("Capacity"), default=0)
+    is_active = models.BooleanField(_("Active"), default=True)
+    description = models.TextField(_("Description"), blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = _("会议室")
-        verbose_name_plural = _("会议室")
+        verbose_name = _("Meeting Room")
+        verbose_name_plural = _("Meeting Rooms")
         ordering = ["name"]
 
     def __str__(self) -> str:
@@ -27,33 +27,33 @@ class RoomBooking(models.Model):
     STATUS_BOOKED = "booked"
     STATUS_CANCELED = "canceled"
     STATUS_CHOICES = [
-        (STATUS_BOOKED, _("已预订")),
-        (STATUS_CANCELED, _("已取消")),
+        (STATUS_BOOKED, _("Booked")),
+        (STATUS_CANCELED, _("Canceled")),
     ]
 
     room = models.ForeignKey(
         MeetingRoom,
-        verbose_name=_("会议室"),
+        verbose_name=_("Meeting Room"),
         on_delete=models.PROTECT,
         related_name="bookings",
     )
     organizer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        verbose_name=_("发起人"),
+        verbose_name=_("Organizer"),
         on_delete=models.PROTECT,
         related_name="room_bookings",
     )
-    title = models.CharField(_("主题"), max_length=200)
-    start_at = models.DateTimeField(_("开始时间"))
-    end_at = models.DateTimeField(_("结束时间"))
-    status = models.CharField(_("状态"), max_length=20, choices=STATUS_CHOICES, default=STATUS_BOOKED)
-    canceled_at = models.DateTimeField(_("取消时间"), null=True, blank=True)
+    title = models.CharField(_("Title"), max_length=200)
+    start_at = models.DateTimeField(_("Start Time"))
+    end_at = models.DateTimeField(_("End Time"))
+    status = models.CharField(_("Status"), max_length=20, choices=STATUS_CHOICES, default=STATUS_BOOKED)
+    canceled_at = models.DateTimeField(_("Canceled At"), null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = _("会议室预订")
-        verbose_name_plural = _("会议室预订")
+        verbose_name = _("Room Booking")
+        verbose_name_plural = _("Room Bookings")
         ordering = ["-start_at"]
         indexes = [
             models.Index(fields=["room", "status", "start_at", "end_at"]),
@@ -67,14 +67,14 @@ class RoomBooking(models.Model):
         errors: dict[str, list[str]] = {}
 
         if self.start_at and self.end_at and self.start_at >= self.end_at:
-            errors.setdefault("end_at", []).append("结束时间必须晚于开始时间")
+            errors.setdefault("end_at", []).append("End time must be later than start time")
 
         if self.room_id and hasattr(self, "room") and not self.room.is_active:
-            errors.setdefault("room", []).append("该会议室当前不可用")
+            errors.setdefault("room", []).append("This meeting room is currently inactive")
 
         if self.status == self.STATUS_BOOKED and self.room_id and self.start_at and self.end_at:
             if self.conflicting_bookings().exists():
-                errors.setdefault("__all__", []).append("该会议室在所选时间段已被占用")
+                errors.setdefault("__all__", []).append("The meeting room is already booked for the selected time slot")
 
         if errors:
             raise ValidationError(errors)

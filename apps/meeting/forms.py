@@ -25,7 +25,7 @@ class RoomBookingForm(forms.ModelForm):
         room = cleaned_data.get("room")
 
         if start_at and end_at and start_at >= end_at:
-            self.add_error("end_at", "结束时间必须晚于开始时间")
+            self.add_error("end_at", "End time must be later than start time")
             return cleaned_data
 
         if room and start_at and end_at:
@@ -36,18 +36,18 @@ class RoomBookingForm(forms.ModelForm):
                 .exists()
             )
             if conflict_exists:
-                self.add_error(None, "该会议室在所选时间段已被占用")
+                self.add_error(None, "The meeting room is already booked for the selected time slot")
         return cleaned_data
 
 
 class RoomWindowAvailabilityForm(forms.Form):
     start_at = forms.DateTimeField(
-        label="开始时间",
+        label="Start Time",
         required=False,
         widget=forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}),
     )
     end_at = forms.DateTimeField(
-        label="结束时间",
+        label="End Time",
         required=False,
         widget=forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}),
     )
@@ -58,34 +58,34 @@ class RoomWindowAvailabilityForm(forms.Form):
         end_at = cleaned_data.get("end_at")
 
         if (start_at and not end_at) or (end_at and not start_at):
-            raise forms.ValidationError("请同时填写开始时间与结束时间")
+            raise forms.ValidationError("Please provide both start and end times")
 
         if start_at and end_at and start_at >= end_at:
-            self.add_error("end_at", "结束时间必须晚于开始时间")
+            self.add_error("end_at", "End time must be later than start time")
 
         return cleaned_data
 
 
 class RoomDayFreeSlotsForm(forms.Form):
     room = forms.ModelChoiceField(
-        label="会议室",
+        label="Meeting Room",
         required=False,
         queryset=MeetingRoom.objects.filter(is_active=True).order_by("name"),
         widget=forms.Select(attrs={"class": "form-select"}),
     )
     date = forms.DateField(
-        label="日期",
+        label="Date",
         required=False,
         widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
     )
     day_start = forms.TimeField(
-        label="日开始",
+        label="Day Start",
         required=False,
         initial=time(9, 0),
         widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
     )
     day_end = forms.TimeField(
-        label="日结束",
+        label="Day End",
         required=False,
         initial=time(18, 0),
         widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
@@ -99,9 +99,9 @@ class RoomDayFreeSlotsForm(forms.Form):
         day_end = cleaned_data.get("day_end")
 
         if (room and not selected_date) or (selected_date and not room):
-            raise forms.ValidationError("请同时选择会议室与日期")
+            raise forms.ValidationError("Please select both meeting room and date")
 
         if day_start and day_end and day_start >= day_end:
-            self.add_error("day_end", "日结束时间必须晚于日开始时间")
+            self.add_error("day_end", "Day end time must be later than day start time")
 
         return cleaned_data

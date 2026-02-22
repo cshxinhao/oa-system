@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block page_title %}文档中心{% endblock %}
+{% block page_title %}Document Center{% endblock %}
 
 {% block actions %}
 <a href="{% url 'docs:doc_create' %}" class="btn btn-sm btn-outline-primary">
-    <i class="bi bi-upload"></i> 上传文档
+    <i class="bi bi-upload"></i> Upload Document
 </a>
 {% endblock %}
 
@@ -16,21 +16,21 @@
       <div class="card-body">
         <h5 class="card-title">{{ doc.title }}</h5>
         <p class="card-text text-muted small">
-            上传人: {{ doc.uploader.get_full_name|default:doc.uploader.username }}<br>
-            时间: {{ doc.created_at|date:"Y-m-d H:i" }}
+            Uploader: {{ doc.uploader.get_full_name|default:doc.uploader.username }}<br>
+            Time: {{ doc.created_at|date:"Y-m-d H:i" }}
         </p>
         <p class="card-text">{{ doc.description|truncatechars:100 }}</p>
       </div>
       <div class="card-footer bg-transparent border-top-0">
         <a href="{{ doc.file.url }}" class="btn btn-sm btn-primary w-100" target="_blank">
-            <i class="bi bi-download"></i> 下载 / 预览
+            <i class="bi bi-download"></i> Download / Preview
         </a>
       </div>
     </div>
   </div>
   {% empty %}
   <div class="col-12">
-      <div class="alert alert-info">暂无文档</div>
+      <div class="alert alert-info">No documents found</div>
   </div>
   {% endfor %}
 </div>

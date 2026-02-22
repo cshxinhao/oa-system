@@ -3,19 +3,19 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 
 class Notice(models.Model):
-    title = models.CharField(_("标题"), max_length=200)
-    content = models.TextField(_("内容"))
+    title = models.CharField(_("Title"), max_length=200)
+    content = models.TextField(_("Content"))
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
-        verbose_name=_("发布人"), 
+        verbose_name=_("Author"), 
         on_delete=models.CASCADE
     )
-    published_at = models.DateTimeField(_("发布时间"), auto_now_add=True)
-    is_published = models.BooleanField(_("是否发布"), default=True)
+    published_at = models.DateTimeField(_("Published At"), auto_now_add=True)
+    is_published = models.BooleanField(_("Published"), default=True)
 
     class Meta:
-        verbose_name = _("公告")
-        verbose_name_plural = _("公告")
+        verbose_name = _("Notice")
+        verbose_name_plural = _("Notices")
         ordering = ['-published_at']
 
     def __str__(self):
