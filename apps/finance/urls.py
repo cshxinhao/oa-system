@@ -10,5 +10,6 @@ urlpatterns = [
     path('reimbursements/<int:pk>/update/', views.ReimbursementUpdateView.as_view(), name='reimbursement_update'),
     path('reimbursements/<int:pk>/delete/', views.ReimbursementDeleteView.as_view(), name='reimbursement_delete'),
     path('reimbursements/<int:pk>/submit/', views.submit_reimbursement, name='reimbursement_submit'),
+    path('reimbursements/<int:pk>/check/', views.check_reimbursement, name='reimbursement_check'),
     path('reimbursements/<int:pk>/approve/', views.approve_reject_reimbursement, name='reimbursement_approve'),
 ]

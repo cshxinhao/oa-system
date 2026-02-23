@@ -7,6 +7,7 @@ class ReimbursementRequest(models.Model):
     STATUS_CHOICES = (
         ('DRAFT', 'Draft'),
         ('SUBMITTED', 'Submitted'),
+        ('CHECKED', 'Checked'),
         ('APPROVED', 'Approved'),
         ('REJECTED', 'Rejected'),
         ('PAID', 'Paid'),
@@ -22,6 +23,18 @@ class ReimbursementRequest(models.Model):
     description = models.TextField(_("Description"), blank=True)
     status = models.CharField(_("Status"), max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     
+    # Checker Fields
+    checker = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='checked_reimbursements',
+        verbose_name=_("Checker")
+    )
+    checked_at = models.DateTimeField(_("Checked At"), null=True, blank=True)
+    
+    # Approver Fields
     approver = models.ForeignKey(
         settings.AUTH_USER_MODEL, 
         on_delete=models.SET_NULL, 
@@ -39,6 +52,9 @@ class ReimbursementRequest(models.Model):
         verbose_name = _("Reimbursement Request")
         verbose_name_plural = _("Reimbursement Requests")
         ordering = ['-created_at']
+        permissions = [
+            ("can_check_reimbursement", "Can check reimbursement requests"),
+        ]
 
     def __str__(self):
         return f"{self.title} ({self.get_status_display()})"

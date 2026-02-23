@@ -18,7 +18,9 @@
                     <tr>
                         <th>ID</th>
                         <th>Title</th>
+                        <th>Requester</th>
                         <th>Status</th>
+                        <th>Checker</th>
                         <th>Amount (HKD)</th>
                         <th>Date</th>
                         <th>Actions</th>
@@ -26,22 +28,31 @@
                 </thead>
                 <tbody>
                     {% for req in requests %}
-                    <tr>
+                    <tr class="{% if user == req.checker and req.status == 'SUBMITTED' %}table-warning{% elif user == calculated_approver and req.status == 'CHECKED' %}table-warning{% endif %}">
                         <td>#{{ req.id }}</td>
                         <td>
                             <a href="{% url 'finance:reimbursement_detail' req.pk %}" class="text-decoration-none fw-bold">
                                 {{ req.title }}
                             </a>
                         </td>
+                        <td>{{ req.requester.get_full_name|default:req.requester.username }}</td>
                         <td>
                             <span class="badge rounded-pill 
                                 {% if req.status == 'DRAFT' %}bg-secondary
                                 {% elif req.status == 'SUBMITTED' %}bg-warning text-dark
+                                {% elif req.status == 'CHECKED' %}bg-primary
                                 {% elif req.status == 'APPROVED' %}bg-success
                                 {% elif req.status == 'REJECTED' %}bg-danger
                                 {% elif req.status == 'PAID' %}bg-info text-dark{% endif %}">
                                 {{ req.get_status_display }}
                             </span>
+                        </td>
+                        <td>
+                            {% if req.checker %}
+                                {{ req.checker.get_full_name|default:req.checker.username }}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
                         </td>
                         <td>${{ req.total_amount }}</td>
                         <td>{{ req.created_at|date:"M d, Y" }}</td>
@@ -63,7 +74,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center py-4 text-muted">
+                        <td colspan="8" class="text-center py-4 text-muted">
                             <i class="bi bi-inbox fs-4 d-block mb-2"></i>
                             No reimbursement requests found.
                         </td>
