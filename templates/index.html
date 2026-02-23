@@ -38,7 +38,11 @@
                 <div class="flex-grow-1 ms-3">
                     <h5 class="card-title mb-1">Document Center</h5>
                     <p class="card-text text-muted small mb-2">Upload and share files</p>
+                    {% if perms.docs.add_document %}
                     <a href="{% url 'docs:doc_create' %}" class="btn btn-sm btn-outline-success stretched-link">Upload</a>
+                    {% else %}
+                    <a href="{% url 'docs:doc_list' %}" class="btn btn-sm btn-outline-success stretched-link">View Docs</a>
+                    {% endif %}
                 </div>
             </div>
         </div>

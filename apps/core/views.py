@@ -19,8 +19,8 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     context_object_name = 'users'
 
     def test_func(self):
-        # Only staff or superusers can access
-        return self.request.user.is_staff
+        # Only superusers can access
+        return self.request.user.is_superuser
 
     def get_queryset(self):
         return User.objects.all().order_by('username')
