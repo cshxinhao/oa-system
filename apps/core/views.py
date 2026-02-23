@@ -18,6 +18,11 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     template_name = 'core/user_permissions.html'
     context_object_name = 'users'
 
+    MANAGED_PERMISSIONS = [
+        {'app': 'docs', 'model': 'document', 'codename': 'add_document', 'label': 'Upload Documents'},
+        {'app': 'finance', 'model': 'reimbursementrequest', 'codename': 'can_check_reimbursement', 'label': 'Check Reimbursements'},
+    ]
+
     def test_func(self):
         # Only superusers can access
         return self.request.user.is_superuser
@@ -27,32 +32,60 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        content_type = ContentType.objects.get(app_label='docs', model='document')
-        try:
-            permission = Permission.objects.get(content_type=content_type, codename='add_document')
-            context['upload_perm'] = permission
-            
-            # Annotate users for template
-            users = list(context['users'])
-            for user in users:
-                user.has_upload_perm = user.user_permissions.filter(id=permission.id).exists()
-            context['users'] = users
-            
-        except Permission.DoesNotExist:
-            context['upload_perm'] = None
-            
+        
+        # Load permission objects
+        permissions_data = []
+        for perm_def in self.MANAGED_PERMISSIONS:
+            try:
+                content_type = ContentType.objects.get(app_label=perm_def['app'], model=perm_def['model'])
+                permission = Permission.objects.get(content_type=content_type, codename=perm_def['codename'])
+                permissions_data.append({
+                    'def': perm_def,
+                    'obj': permission
+                })
+            except (ContentType.DoesNotExist, Permission.DoesNotExist):
+                continue
+                
+        context['managed_permissions'] = permissions_data
+        
+        # Annotate users
+        users = list(context['users'])
+        for user in users:
+            user_perms = set(user.user_permissions.values_list('id', flat=True))
+            user.permission_states = []
+            for p in permissions_data:
+                perm_id = p['obj'].id
+                user.permission_states.append({
+                    'codename': p['def']['codename'],
+                    'has_perm': (perm_id in user_perms)
+                })
+                
+        context['users'] = users
         return context
 
     def post(self, request, *args, **kwargs):
+        codename = request.POST.get('permission_codename')
+        
+        # Find the permission definition
+        perm_def = next((p for p in self.MANAGED_PERMISSIONS if p['codename'] == codename), None)
+        
+        if not perm_def:
+            messages.error(request, "Invalid permission specified.")
+            return redirect('core:user_permissions')
+            
         try:
-            content_type = ContentType.objects.get(app_label='docs', model='document')
-            permission = Permission.objects.get(content_type=content_type, codename='add_document')
+            content_type = ContentType.objects.get(app_label=perm_def['app'], model=perm_def['model'])
+            permission = Permission.objects.get(content_type=content_type, codename=perm_def['codename'])
         except (ContentType.DoesNotExist, Permission.DoesNotExist):
-            messages.error(request, "Permission 'docs.add_document' not found.")
+            messages.error(request, f"Permission '{codename}' not found in database.")
             return redirect('core:user_permissions')
         
+        # Process users for this specific permission
+        # visible_user_ids ensures we only modify users that were displayed on the page
         visible_user_ids = set(map(int, request.POST.getlist('visible_user_ids')))
-        selected_user_ids = set(map(int, request.POST.getlist('user_ids')))
+        
+        # selected_user_ids are the ones checked for THIS permission
+        selected_user_ids = set(map(int, request.POST.getlist(f'user_ids_{codename}')))
         
         # Get users who currently have permission AND are in the visible list
         current_holders = User.objects.filter(user_permissions=permission, id__in=visible_user_ids)
@@ -72,7 +105,7 @@ class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, ListView):
             for user in User.objects.filter(id__in=to_add):
                 user.user_permissions.add(permission)
         
-        messages.success(request, "Permissions updated successfully.")
+        messages.success(request, f"Permissions for '{perm_def['label']}' updated successfully.")
         return redirect('core:user_permissions')
 
 class UserViewSet(viewsets.ReadOnlyModelViewSet):

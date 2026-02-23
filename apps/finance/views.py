@@ -5,8 +5,9 @@ from django.urls import reverse_lazy
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
+from django.utils import timezone
 from .models import ReimbursementRequest, ExpenseItem
-from .forms import ReimbursementRequestForm, ExpenseItemFormSet
+from .forms import ReimbursementRequestForm, ExpenseItemFormSet, CheckerSelectionForm
 
 class ReimbursementListView(LoginRequiredMixin, ListView):
     model = ReimbursementRequest
@@ -17,26 +18,75 @@ class ReimbursementListView(LoginRequiredMixin, ListView):
         user = self.request.user
         queryset = ReimbursementRequest.objects.all()
         
-        if user.is_staff or user.is_superuser:
-            # Staff can see all submitted requests + their own drafts
+        # Superusers see everything
+        if user.is_superuser:
+            return queryset.order_by('-created_at')
+            
+        # Checkers see requests assigned to them
+        if user.has_perm('finance.can_check_reimbursement'):
+             return queryset.filter(
+                Q(requester=user) | 
+                Q(checker=user) |
+                Q(status__in=['CHECKED', 'APPROVED', 'REJECTED', 'PAID'])
+            ).distinct().order_by('-created_at')
+            
+        # Managers/Approvers logic (simplified for list view, detailed permissions handled in detail view)
+        # For now, if staff, show all non-drafts to allow finding requests to approve
+        if user.is_staff:
             return queryset.filter(
                 Q(requester=user) | 
-                Q(status__in=['SUBMITTED', 'APPROVED', 'REJECTED', 'PAID'])
+                Q(status__in=['SUBMITTED', 'CHECKED', 'APPROVED', 'REJECTED', 'PAID'])
             ).distinct().order_by('-created_at')
-        else:
-            # Regular users only see their own
-            return queryset.filter(requester=user).order_by('-created_at')
+
+        # Regular users only see their own
+        return queryset.filter(requester=user).order_by('-created_at')
 
 class ReimbursementDetailView(LoginRequiredMixin, DetailView):
     model = ReimbursementRequest
     template_name = 'finance/reimbursement_detail.html'
     context_object_name = 'reimbursement'
 
-    def get_queryset(self):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
         user = self.request.user
-        if user.is_staff or user.is_superuser:
-            return ReimbursementRequest.objects.all()
-        return ReimbursementRequest.objects.filter(requester=user)
+        reimbursement = self.object
+        
+        # Determine if user can check
+        context['can_check'] = (
+            reimbursement.status == 'SUBMITTED' and 
+            reimbursement.checker == user and
+            user.has_perm('finance.can_check_reimbursement')
+        ) or user.is_superuser
+        
+        # Determine if user can approve
+        # Logic: Status is CHECKED AND (User is calculated approver OR Superuser)
+        approver = self.get_approver(reimbursement)
+        context['can_approve'] = (
+            reimbursement.status == 'CHECKED' and
+            (user == approver or user.is_superuser)
+        )
+        context['calculated_approver'] = approver
+        
+        return context
+        
+    def get_approver(self, reimbursement):
+        requester = reimbursement.requester
+        if not requester.department:
+            return None # No department, handled by superuser/admin
+            
+        # If requester is not manager, approver is their manager
+        if requester.department.manager != requester:
+            return requester.department.manager
+        
+        # If requester IS manager, approver is parent department manager
+        if requester.department.parent:
+            return requester.department.parent.manager
+            
+        return None
+
+    def get_queryset(self):
+        # Allow wide access for detail view, permissions handled in template/actions
+        return ReimbursementRequest.objects.all()
 
 class ReimbursementCreateView(LoginRequiredMixin, CreateView):
     model = ReimbursementRequest
@@ -112,20 +162,63 @@ class ReimbursementDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteVie
 
 def submit_reimbursement(request, pk):
     reimbursement = get_object_or_404(ReimbursementRequest, pk=pk, requester=request.user)
-    if reimbursement.status == 'DRAFT':
-        reimbursement.status = 'SUBMITTED'
-        reimbursement.save()
-        messages.success(request, 'Reimbursement request submitted successfully.')
-    else:
+    
+    if reimbursement.status != 'DRAFT':
         messages.error(request, 'Only draft requests can be submitted.')
-    return redirect('finance:reimbursement_list')
+        return redirect('finance:reimbursement_list')
+
+    if request.method == 'POST':
+        form = CheckerSelectionForm(request.POST)
+        if form.is_valid():
+            reimbursement.status = 'SUBMITTED'
+            reimbursement.checker = form.cleaned_data['checker']
+            reimbursement.save()
+            messages.success(request, 'Reimbursement request submitted to checker successfully.')
+            return redirect('finance:reimbursement_list')
+    else:
+        form = CheckerSelectionForm()
+        
+    return render(request, 'finance/reimbursement_submit.html', {
+        'reimbursement': reimbursement,
+        'form': form
+    })
+
+def check_reimbursement(request, pk):
+    reimbursement = get_object_or_404(ReimbursementRequest, pk=pk)
+    
+    # Permission check: Must be the assigned checker or superuser
+    if not (request.user == reimbursement.checker or request.user.is_superuser):
+        messages.error(request, 'You are not authorized to check this request.')
+        return redirect('finance:reimbursement_detail', pk=pk)
+        
+    if reimbursement.status != 'SUBMITTED':
+        messages.error(request, 'Request is not in submitted state.')
+        return redirect('finance:reimbursement_detail', pk=pk)
+        
+    if request.method == 'POST':
+        reimbursement.status = 'CHECKED'
+        reimbursement.checked_at = timezone.now()
+        reimbursement.save()
+        messages.success(request, 'Request checked successfully. Forwarded for approval.')
+        
+    return redirect('finance:reimbursement_detail', pk=pk)
 
 def approve_reject_reimbursement(request, pk):
-    if not (request.user.is_staff or request.user.is_superuser):
+    reimbursement = get_object_or_404(ReimbursementRequest, pk=pk)
+    
+    # Resolve Approver
+    view = ReimbursementDetailView()
+    view.request = request
+    expected_approver = view.get_approver(reimbursement)
+    
+    # Permission Check
+    if not (request.user == expected_approver or request.user.is_superuser):
         messages.error(request, 'You are not authorized to approve requests.')
         return redirect('finance:reimbursement_list')
         
-    reimbursement = get_object_or_404(ReimbursementRequest, pk=pk)
+    if reimbursement.status != 'CHECKED':
+        messages.error(request, 'Request must be checked before approval.')
+        return redirect('finance:reimbursement_detail', pk=pk)
     
     if request.method == 'POST':
         action = request.POST.get('action')

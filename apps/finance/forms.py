@@ -1,6 +1,9 @@
 from django import forms
 from django.forms import inlineformset_factory
+from django.contrib.auth import get_user_model
 from .models import ReimbursementRequest, ExpenseItem
+
+User = get_user_model()
 
 class ReimbursementRequestForm(forms.ModelForm):
     class Meta:
@@ -10,6 +13,21 @@ class ReimbursementRequestForm(forms.ModelForm):
             'description': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'title': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+class CheckerSelectionForm(forms.Form):
+    checker = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        label="Select Checker",
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter users who have the 'can_check_reimbursement' permission
+        self.fields['checker'].queryset = User.objects.filter(
+            user_permissions__codename='can_check_reimbursement',
+            user_permissions__content_type__app_label='finance'
+        ).distinct()
 
 class ExpenseItemForm(forms.ModelForm):
     class Meta:
