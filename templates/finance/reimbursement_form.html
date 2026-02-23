@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{% if form.instance.pk %}Edit{% else %}New{% endif %} Reimbursement Request{% endblock %}
+{% block page_title %}{% if form.instance.pk %}Edit{% else %}New{% endif %} Reimbursement Request{% endblock %}
+
+{% block content %}
+<form method="post" enctype="multipart/form-data" id="reimbursementForm">
+    {% csrf_token %}
+    
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Request Details</h5>
+                </div>
+                <div class="card-body">
+                    {% for field in form %}
+                    <div class="mb-3">
+                        <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}
+                        <div class="form-text">{{ field.help_text }}</div>
+                        {% endif %}
+                        {% if field.errors %}
+                        <div class="text-danger small">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Expense Items</h5>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="add-item-btn">
+                        <i class="bi bi-plus-lg"></i> Add Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    {{ items.management_form }}
+                    <div id="expense-items-container">
+                        {% for item_form in items %}
+                        <div class="expense-item border rounded p-3 mb-3 bg-light position-relative">
+                            {% for hidden in item_form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Date</label>
+                                    {{ item_form.expense_date }}
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Type</label>
+                                    {{ item_form.expense_type }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Amount</label>
+                                    {{ item_form.amount }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Currency</label>
+                                    {{ item_form.currency }}
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Ex. Rate</label>
+                                    {{ item_form.exchange_rate }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Description</label>
+                                    {{ item_form.description }}
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Receipt</label>
+                                    {{ item_form.attachment }}
+                                </div>
+                                {% if items.can_delete %}
+                                <div class="col-12 text-end">
+                                    <div class="form-check d-inline-block">
+                                        {{ item_form.DELETE }}
+                                        <label class="form-check-label text-danger">Delete</label>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mb-5">
+        <a href="{% url 'finance:reimbursement_list' %}" class="btn btn-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Save Request
+        </button>
+    </div>
+</form>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('expense-items-container');
+        const addButton = document.getElementById('add-item-btn');
+        const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+        
+        addButton.addEventListener('click', function() {
+            const forms = container.getElementsByClassName('expense-item');
+            const currentFormCount = forms.length;
+            const lastForm = forms[currentFormCount - 1];
+            
+            const newForm = lastForm.cloneNode(true);
+            
+            // Update regex to replace index
+            const regex = new RegExp(`items-${currentFormCount-1}-`, 'g');
+            newForm.innerHTML = newForm.innerHTML.replace(regex, `items-${currentFormCount}-`);
+            
+            // Clear values
+            const inputs = newForm.querySelectorAll('input, select, textarea');
+            inputs.forEach(input => {
+                if (input.type !== 'hidden') {
+                    input.value = '';
+                    if (input.name.includes('exchange_rate')) input.value = '1.0000';
+                    if (input.name.includes('currency')) input.value = 'HKD';
+                }
+                if (input.type === 'checkbox') input.checked = false;
+            });
+            
+            container.appendChild(newForm);
+            totalForms.value = currentFormCount + 1;
+        });
+    });
+</script>
+{% endblock %}
