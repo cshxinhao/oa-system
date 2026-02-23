@@ -90,6 +90,15 @@
                 </a>
               </li>
               
+              <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+                <span>Finance</span>
+              </h6>
+              <li class="nav-item">
+                <a class="nav-link {% if 'finance' in request.path %}active{% endif %}" href="{% url 'finance:reimbursement_list' %}">
+                  <i class="bi bi-cash-stack"></i> Reimbursements
+                </a>
+              </li>
+              
               {% if user.is_superuser %}
               <li class="nav-item">
                 <a class="nav-link {% if 'permissions' in request.path %}active{% endif %}" href="{% url 'core:user_permissions' %}">

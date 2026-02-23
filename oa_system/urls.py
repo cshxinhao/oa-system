@@ -26,6 +26,7 @@ urlpatterns = [
      path("hr/", include('hr.urls', namespace='hr')),
      path("docs/", include('docs.urls', namespace='docs')),
      path("meeting/", include('meeting.urls', namespace='meeting')),
+     path("finance/", include('finance.urls', namespace='finance')),
 ]
 
 if settings.DEBUG:

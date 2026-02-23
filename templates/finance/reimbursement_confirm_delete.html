@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Request{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm border-danger">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">Confirm Delete</h5>
+            </div>
+            <div class="card-body text-center">
+                <p class="fs-5">Are you sure you want to delete the request <strong>"{{ object.title }}"</strong>?</p>
+                <p class="text-muted">This action cannot be undone.</p>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <a href="{% url 'finance:reimbursement_list' %}" class="btn btn-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-danger">Delete Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
