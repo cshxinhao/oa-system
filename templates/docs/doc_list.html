@@ -3,9 +3,11 @@
 {% block page_title %}Document Center{% endblock %}
 
 {% block actions %}
+{% if perms.docs.add_document %}
 <a href="{% url 'docs:doc_create' %}" class="btn btn-sm btn-outline-primary">
     <i class="bi bi-upload"></i> Upload Document
 </a>
+{% endif %}
 {% endblock %}
 
 {% block content %}

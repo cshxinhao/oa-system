@@ -22,6 +22,7 @@ urlpatterns = [
     
     # Frontend
      path("", index, name='index'),
+     path("core/", include('core.urls', namespace='core')),
      path("hr/", include('hr.urls', namespace='hr')),
      path("docs/", include('docs.urls', namespace='docs')),
      path("meeting/", include('meeting.urls', namespace='meeting')),

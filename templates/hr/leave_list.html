@@ -33,8 +33,7 @@
         <thead>
           <tr>
             <th>Type</th>
-            <th>Start Date</th>
-            <th>End Date</th>
+            <th>Date(s)</th>
             <th>Duration</th>
             <th>Status</th>
             <th>Reviewer</th>
@@ -45,8 +44,13 @@
           {% for leave in leaves %}
           <tr>
             <td>{{ leave.get_leave_type_display }}</td>
-            <td>{{ leave.start_date }}</td>
-            <td>{{ leave.end_date }}</td>
+            <td>
+                {% if leave.dates.exists %}
+                    {% for d in leave.dates.all %}{{ d }}{% if not forloop.last %}, <br>{% endif %}{% endfor %}
+                {% else %}
+                    {{ leave.start_date }} to {{ leave.end_date }}
+                {% endif %}
+            </td>
             <td>{{ leave.duration_days }}</td>
             <td>
                 <span class="badge {% if leave.status == 'approved' %}bg-success{% elif leave.status == 'rejected' %}bg-danger{% else %}bg-warning{% endif %}">
@@ -64,7 +68,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="7" class="text-center">No leave applications found</td>
+            <td colspan="6" class="text-center">No leave applications found</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -82,7 +86,7 @@
             <th>Applicant</th>
             <th>Department</th>
             <th>Type</th>
-            <th>Duration</th>
+            <th>Date(s)</th>
             <th>Reason</th>
             <th>Actions</th>
           </tr>
@@ -93,7 +97,13 @@
             <td>{{ leave.applicant.get_full_name|default:leave.applicant.username }}</td>
             <td>{{ leave.applicant.department.name|default:"-" }}</td>
             <td>{{ leave.get_leave_type_display }}</td>
-            <td>{{ leave.start_date }} to {{ leave.end_date }}</td>
+            <td>
+                {% if leave.dates.exists %}
+                    {% for d in leave.dates.all %}{{ d }}{% if not forloop.last %}, <br>{% endif %}{% endfor %}
+                {% else %}
+                    {{ leave.start_date }} to {{ leave.end_date }}
+                {% endif %}
+            </td>
             <td title="{{ leave.reason }}">{{ leave.reason|truncatechars:20 }}</td>
             <td>
                 <div class="btn-group btn-group-sm" role="group">

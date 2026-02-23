@@ -8,7 +8,7 @@ from django.db import transaction
 from django_fsm import TransitionNotAllowed
 from .models import LeaveApplication
 from .forms import LeaveApplicationForm
-from .permissions import approvable_department_ids
+from .permissions import get_pending_leaves_for_approver, can_approve_application
 
 class LeaveListView(LoginRequiredMixin, ListView):
     model = LeaveApplication
@@ -24,19 +24,8 @@ class LeaveListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         user = self.request.user
         
-        pending_leaves = LeaveApplication.objects.none()
-        can_approve = False
-        
-        department_ids = approvable_department_ids(user)
-        if department_ids is None:
-            can_approve = True
-            pending_leaves = LeaveApplication.objects.filter(status=LeaveApplication.STATUS_PENDING)
-        elif department_ids:
-            can_approve = True
-            pending_leaves = LeaveApplication.objects.filter(
-                status=LeaveApplication.STATUS_PENDING,
-                applicant__department_id__in=department_ids,
-            ).exclude(applicant=user)
+        pending_leaves = get_pending_leaves_for_approver(user)
+        can_approve = pending_leaves.exists()
             
         context['pending_leaves'] = pending_leaves
         context['can_approve'] = can_approve
@@ -55,6 +44,14 @@ class LeaveCreateView(LoginRequiredMixin, CreateView):
                 self.object = form.save(commit=False)
                 self.object.applicant = self.request.user
                 self.object.save()
+                
+                # Handle discontinuous dates
+                parsed_dates = form.cleaned_data.get('parsed_dates')
+                if parsed_dates:
+                    from .models import LeaveApplicationDate
+                    for d in parsed_dates:
+                        LeaveApplicationDate.objects.create(application=self.object, date=d)
+                
                 self.object.submit()
                 self.object.save()
         except TransitionNotAllowed:
@@ -67,12 +64,7 @@ class LeaveApproveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         leave = get_object_or_404(LeaveApplication, pk=pk)
         
-        department_ids = approvable_department_ids(request.user)
-        allowed = (
-            department_ids is None
-            or (leave.applicant.department_id and leave.applicant.department_id in department_ids)
-        )
-        if not allowed:
+        if not can_approve_application(request.user, leave):
             raise PermissionDenied("您没有权限审批此申请")
             
         if leave.status != LeaveApplication.STATUS_PENDING:
@@ -95,12 +87,7 @@ class LeaveRejectView(LoginRequiredMixin, View):
     def post(self, request, pk):
         leave = get_object_or_404(LeaveApplication, pk=pk)
         
-        department_ids = approvable_department_ids(request.user)
-        allowed = (
-            department_ids is None
-            or (leave.applicant.department_id and leave.applicant.department_id in department_ids)
-        )
-        if not allowed:
+        if not can_approve_application(request.user, leave):
             raise PermissionDenied("您没有权限审批此申请")
             
         if leave.status != LeaveApplication.STATUS_PENDING:

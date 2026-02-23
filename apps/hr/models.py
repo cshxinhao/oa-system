@@ -19,11 +19,21 @@ class LeaveApplication(models.Model):
     TYPE_SICK = 'sick'
     TYPE_ANNUAL = 'annual'
     TYPE_PERSONAL = 'personal'
+    TYPE_BIRTHDAY = 'birthday'
+    TYPE_MATERNITY = 'maternity'
+    TYPE_PATERNITY = 'paternity'
+    TYPE_COMPASSIONATE = 'compassionate'
+    TYPE_NO_PAY = 'no_pay'
     
     TYPE_CHOICES = (
         (TYPE_SICK, _('Sick Leave')),
         (TYPE_ANNUAL, _('Annual Leave')),
         (TYPE_PERSONAL, _('Personal Leave')),
+        (TYPE_BIRTHDAY, _('Birthday Leave')),
+        (TYPE_MATERNITY, _('Maternity Leave')),
+        (TYPE_PATERNITY, _('Paternity Leave')),
+        (TYPE_COMPASSIONATE, _('Compassionate Leave')),
+        (TYPE_NO_PAY, _('No Pay Leave')),
     )
 
     applicant = models.ForeignKey(
@@ -61,6 +71,8 @@ class LeaveApplication(models.Model):
 
     @property
     def duration_days(self):
+        if self.pk and self.dates.exists():
+            return self.dates.count()
         if not self.start_date or not self.end_date:
             return 0
         return (self.end_date - self.start_date).days + 1
@@ -79,3 +91,13 @@ class LeaveApplication(models.Model):
     def reject(self):
         """拒绝"""
         pass
+
+class LeaveApplicationDate(models.Model):
+    application = models.ForeignKey(LeaveApplication, on_delete=models.CASCADE, related_name='dates')
+    date = models.DateField()
+    
+    class Meta:
+        ordering = ['date']
+
+    def __str__(self):
+        return str(self.date)

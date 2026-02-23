@@ -1,5 +1,5 @@
 from django.views.generic import ListView, CreateView
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django import forms
@@ -25,11 +25,12 @@ class DocumentListView(LoginRequiredMixin, ListView):
         # 所有人可见的文档 + 自己上传的文档
         return Document.objects.filter(is_public=True) | Document.objects.filter(uploader=self.request.user)
 
-class DocumentCreateView(LoginRequiredMixin, CreateView):
+class DocumentCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Document
     form_class = DocumentForm
     template_name = 'docs/doc_form.html'
     success_url = reverse_lazy('docs:doc_list')
+    permission_required = 'docs.add_document'
 
     def form_valid(self, form):
         form.instance.uploader = self.request.user
