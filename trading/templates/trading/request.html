@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Personal Trading Request{% endblock %}
+
+{% block page_title %}Personal Trading Request{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>New Trading Request System</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" role="alert">
+                    <h4 class="alert-heading">Important Notice</h4>
+                    <p>A new IT system for Personal Trading Requests is now in place, replacing the previous one. Please use this system for all future trading requests.</p>
+                </div>
+
+                <h5 class="mt-4">How to Submit a Request</h5>
+                <p>For your first submission, please follow these steps:</p>
+                
+                <ol class="list-group list-group-numbered mb-4">
+                    <li class="list-group-item">Register your account at the external portal (link below).</li>
+                    <li class="list-group-item">To create a new request, select <strong>"Submit New Request"</strong>.</li>
+                    <li class="list-group-item">Fill in the required information accordingly.</li>
+                    <li class="list-group-item">Please review the <strong>Company Policy</strong> before finalizing your submission.</li>
+                    <li class="list-group-item">You will receive an approved or rejected email & you can track the status of your requests under <strong>"My Requests"</strong>.</li>
+                </ol>
+
+                <div class="d-grid gap-2 col-md-6 mx-auto my-4">
+                    <a href="https://eform.avenue.limited/" target="_blank" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-up-right me-2"></i>Go to Trading Request Form
+                    </a>
+                </div>
+
+                <div class="mt-4 text-muted small border-top pt-3">
+                    <p class="mb-0">Should you have any questions, feel free to contact the Compliance team.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

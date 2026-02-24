@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     "admin_office",
     "docs",
     "meeting",
+    "trading",
 ]
 
 MIDDLEWARE = [

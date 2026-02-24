@@ -28,6 +28,7 @@ urlpatterns = [
      path("meeting/", include('meeting.urls', namespace='meeting')),
      path("finance/", include('finance.urls', namespace='finance')),
      path("admin-office/", include('admin_office.urls', namespace='admin_office')),
+     path("trading/", include('trading.urls', namespace='trading')),
 ]
 
 if settings.DEBUG:
