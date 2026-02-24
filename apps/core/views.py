@@ -12,6 +12,7 @@ from .serializers import UserSerializer, DepartmentSerializer
 from admin_office.models import Notice
 from hr.models import LeaveApplication
 from hr.permissions import get_pending_leaves_for_approver
+from finance.models import ReimbursementRequest
 
 class UserPermissionView(LoginRequiredMixin, UserPassesTestMixin, ListView):
     model = User
@@ -127,15 +128,73 @@ class DepartmentViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
     search_fields = ['name']
 
+def get_approver_for_reimbursement(reimbursement):
+    """Helper to determine the approver for a reimbursement request."""
+    requester = reimbursement.requester
+    if not requester.department:
+        return None 
+    
+    # If requester is not manager, approver is their manager
+    if requester.department.manager != requester:
+        return requester.department.manager
+    
+    # If requester IS manager, approver is parent department manager
+    if requester.department.parent:
+        return requester.department.parent.manager
+        
+    return None
+
 @login_required
 def index(request):
     notices = Notice.objects.filter(is_published=True).order_by('-published_at')[:5]
     
+    # Pending Leaves
     pending_leaves = get_pending_leaves_for_approver(request.user)
-    can_approve = pending_leaves.exists()
+    
+    # Pending Reimbursements
+    pending_reimbursements = []
+    
+    # 1. Check if user is a checker and has submitted requests assigned
+    if request.user.has_perm('finance.can_check_reimbursement'):
+        checks = ReimbursementRequest.objects.filter(
+            status='SUBMITTED', 
+            checker=request.user
+        )
+        for req in checks:
+            req.todo_type = 'reimbursement_check'
+            pending_reimbursements.append(req)
+            
+    # 2. Check if user is an approver for any checked requests
+    # Get all CHECKED requests
+    checked_requests = ReimbursementRequest.objects.filter(status='CHECKED')
+    
+    for req in checked_requests:
+        approver = get_approver_for_reimbursement(req)
+        if approver == request.user or request.user.is_superuser:
+            req.todo_type = 'reimbursement_approve'
+            pending_reimbursements.append(req)
+    
+    # Mark leave items for the template
+    for leave in pending_leaves:
+        leave.todo_type = 'leave_approve'
+    
+    # Combine and Sort
+    # We need to convert querysets to lists to combine them
+    todo_list = list(pending_leaves) + list(pending_reimbursements)
+    
+    # Sort by creation date (newest first) - assuming both have created_at/start_date
+    # Reimbursement has created_at, Leave has start_date (or created_at if exists)
+    # Let's just append for now, or sort if possible.
+    
+    has_todo = len(todo_list) > 0
 
     return render(
         request,
         'index.html',
-        {'notices': notices, 'pending_leaves': pending_leaves, 'can_approve': can_approve},
+        {
+            'notices': notices, 
+            'todo_list': todo_list,
+            'has_todo': has_todo,
+            'can_approve': has_todo # Keeping for backward compatibility if needed, but logic changed
+        },
     )

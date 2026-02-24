@@ -71,6 +71,11 @@
                 <span>HR & Admin</span>
               </h6>
               <li class="nav-item">
+                <a class="nav-link {% if 'admin_office' in request.path %}active{% endif %}" href="{% url 'admin_office:notice_list' %}">
+                  <i class="bi bi-megaphone"></i> Announcements
+                </a>
+              </li>
+              <li class="nav-item">
                 <a class="nav-link {% if 'hr' in request.path %}active{% endif %}" href="{% url 'hr:leave_list' %}">
                   <i class="bi bi-calendar-check"></i> Leave Management
                 </a>

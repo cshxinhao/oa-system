@@ -15,7 +15,7 @@
 
 <!-- Quick Actions -->
 <div class="row g-4 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body d-flex align-items-center">
                 <div class="flex-shrink-0 bg-primary bg-opacity-10 p-3 rounded-3">
@@ -29,7 +29,21 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body d-flex align-items-center">
+                <div class="flex-shrink-0 bg-info bg-opacity-10 p-3 rounded-3">
+                    <i class="bi bi-cash-stack text-info fs-3"></i>
+                </div>
+                <div class="flex-grow-1 ms-3">
+                    <h5 class="card-title mb-1">Reimbursement</h5>
+                    <p class="card-text text-muted small mb-2">Submit expense claims</p>
+                    <a href="{% url 'finance:reimbursement_create' %}" class="btn btn-sm btn-outline-info stretched-link">Apply Now</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body d-flex align-items-center">
                 <div class="flex-shrink-0 bg-success bg-opacity-10 p-3 rounded-3">
@@ -47,7 +61,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body d-flex align-items-center">
                 <div class="flex-shrink-0 bg-warning bg-opacity-10 p-3 rounded-3">
@@ -74,13 +88,13 @@
             </div>
             <div class="list-group list-group-flush">
                 {% for notice in notices %}
-                <div class="list-group-item px-3 py-3">
+                <a href="{% url 'admin_office:notice_detail' notice.pk %}" class="list-group-item list-group-item-action px-3 py-3">
                     <div class="d-flex w-100 justify-content-between align-items-center mb-1">
                         <h6 class="mb-0 fw-semibold">{{ notice.title }}</h6>
                         <span class="badge bg-light text-dark border">{{ notice.published_at|date:"M d" }}</span>
                     </div>
-                    <p class="mb-0 text-muted small">{{ notice.content|truncatechars:80 }}</p>
-                </div>
+                    <p class="mb-0 text-muted small">{{ notice.content|striptags|truncatechars:80 }}</p>
+                </a>
                 {% empty %}
                 <div class="list-group-item text-center text-muted py-5">
                     <i class="bi bi-inbox fs-4 d-block mb-2"></i>
@@ -91,70 +105,84 @@
         </div>
     </div>
 
-    <!-- Leave Approval / To-Do -->
+    <!-- My To-Do -->
     <div class="col-lg-6">
         <div class="card shadow-sm h-100">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                {% if can_approve %}
-                    <h5 class="card-title mb-0 d-flex align-items-center">
-                        <i class="bi bi-clipboard-check me-2 text-success"></i> Leave Approval
-                    </h5>
-                    <a href="{% url 'hr:leave_list' %}" class="btn btn-sm btn-light">View All</a>
-                {% else %}
-                    <h5 class="card-title mb-0 d-flex align-items-center">
-                        <i class="bi bi-check2-square me-2 text-info"></i> My To-Do
-                    </h5>
+                <h5 class="card-title mb-0 d-flex align-items-center">
+                    <i class="bi bi-check2-square me-2 text-info"></i> My To-Do
+                </h5>
+                {% if has_todo %}
+                <span class="badge bg-danger rounded-pill">{{ todo_list|length }} Pending</span>
                 {% endif %}
             </div>
             
-            {% if can_approve %}
+            {% if has_todo %}
               <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                   <thead class="table-light">
                     <tr>
-                      <th class="ps-3">Applicant</th>
-                      <th>Date</th>
-                      <th>Reason</th>
+                      <th class="ps-3">Type</th>
+                      <th>Applicant</th>
+                      <th>Details</th>
                       <th class="text-end pe-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {% for leave in pending_leaves %}
+                    {% for item in todo_list %}
                       <tr>
                         <td class="ps-3">
-                            <div class="fw-medium">{{ leave.applicant.get_full_name|default:leave.applicant.username }}</div>
-                            <small class="text-muted">{{ leave.applicant.department.name|default:"-" }}</small>
+                            {% if item.todo_type == 'leave_approve' %}
+                                <span class="badge bg-primary bg-opacity-10 text-primary">Leave</span>
+                            {% elif item.todo_type == 'reimbursement_check' %}
+                                <span class="badge bg-info bg-opacity-10 text-info">Reimburse Check</span>
+                            {% elif item.todo_type == 'reimbursement_approve' %}
+                                <span class="badge bg-warning bg-opacity-10 text-warning">Reimburse Approve</span>
+                            {% endif %}
                         </td>
                         <td>
-                            <div class="small">{{ leave.start_date|date:"M d" }} - {{ leave.end_date|date:"M d" }}</div>
+                            {% if item.todo_type == 'leave_approve' %}
+                                <div class="fw-medium">{{ item.applicant.get_full_name|default:item.applicant.username }}</div>
+                                <small class="text-muted">{{ item.applicant.department.name|default:"-" }}</small>
+                            {% else %}
+                                <div class="fw-medium">{{ item.requester.get_full_name|default:item.requester.username }}</div>
+                                <small class="text-muted">{{ item.requester.department.name|default:"-" }}</small>
+                            {% endif %}
                         </td>
-                        <td title="{{ leave.reason }}">
-                            <span class="d-inline-block text-truncate" style="max-width: 150px;">
-                                {{ leave.reason }}
-                            </span>
+                        <td>
+                            {% if item.todo_type == 'leave_approve' %}
+                                <div class="small">{{ item.start_date|date:"M d" }} - {{ item.end_date|date:"M d" }}</div>
+                                <small class="text-muted d-inline-block text-truncate" style="max-width: 100px;" title="{{ item.reason }}">{{ item.reason }}</small>
+                            {% else %}
+                                <div class="small fw-bold">{{ item.total_amount }} HKD</div>
+                                <small class="text-muted d-inline-block text-truncate" style="max-width: 100px;" title="{{ item.description }}">{{ item.title }}</small>
+                            {% endif %}
                         </td>
                         <td class="text-end pe-3">
                           <div class="btn-group btn-group-sm">
-                            <form action="{% url 'hr:leave_approve' leave.pk %}" method="post" class="d-inline">
-                              {% csrf_token %}
-                              <button type="submit" class="btn btn-outline-success" title="Approve" onclick="return confirm('Confirm approval?')">
-                                <i class="bi bi-check-lg"></i>
-                              </button>
-                            </form>
-                            <form action="{% url 'hr:leave_reject' leave.pk %}" method="post" class="d-inline ms-1">
-                              {% csrf_token %}
-                              <button type="submit" class="btn btn-outline-danger" title="Reject" onclick="return confirm('Confirm rejection?')">
-                                <i class="bi bi-x-lg"></i>
-                              </button>
-                            </form>
+                            {% if item.todo_type == 'leave_approve' %}
+                                <form action="{% url 'hr:leave_approve' item.pk %}" method="post" class="d-inline">
+                                  {% csrf_token %}
+                                  <button type="submit" class="btn btn-outline-success" title="Approve" onclick="return confirm('Confirm approval?')">
+                                    <i class="bi bi-check-lg"></i>
+                                  </button>
+                                </form>
+                                <form action="{% url 'hr:leave_reject' item.pk %}" method="post" class="d-inline ms-1">
+                                  {% csrf_token %}
+                                  <button type="submit" class="btn btn-outline-danger" title="Reject" onclick="return confirm('Confirm rejection?')">
+                                    <i class="bi bi-x-lg"></i>
+                                  </button>
+                                </form>
+                            {% elif item.todo_type == 'reimbursement_check' %}
+                                <a href="{% url 'finance:reimbursement_detail' item.pk %}" class="btn btn-outline-primary" title="Check">
+                                    <i class="bi bi-search"></i>
+                                </a>
+                            {% elif item.todo_type == 'reimbursement_approve' %}
+                                <a href="{% url 'finance:reimbursement_detail' item.pk %}" class="btn btn-outline-primary" title="Review">
+                                    <i class="bi bi-search"></i>
+                                </a>
+                            {% endif %}
                           </div>
-                        </td>
-                      </tr>
-                    {% empty %}
-                      <tr>
-                        <td colspan="4" class="text-center text-muted py-5">
-                            <i class="bi bi-check2-circle fs-4 d-block mb-2"></i>
-                            No pending approvals
                         </td>
                       </tr>
                     {% endfor %}
