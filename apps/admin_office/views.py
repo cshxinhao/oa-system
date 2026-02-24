@@ -30,7 +30,7 @@ class NoticeListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         if self.request.user.is_staff:
-            return Notice.objects.all().order_by('-created_at')
+            return Notice.objects.all().order_by('-published_at')
         return Notice.objects.filter(is_published=True).order_by('-published_at')
 
 class NoticeDetailView(LoginRequiredMixin, DetailView):

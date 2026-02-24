@@ -29,14 +29,6 @@
             <div class="card-body py-4" style="min-height: 300px;">
                 <div class="card-text fs-5" style="white-space: pre-wrap;">{{ notice.content }}</div>
             </div>
-            {% if notice.attachment %}
-            <div class="card-footer bg-light">
-                <h6 class="mb-2">Attachments:</h6>
-                <a href="{{ notice.attachment.url }}" class="btn btn-sm btn-outline-primary" target="_blank">
-                    <i class="bi bi-paperclip me-1"></i> Download Attachment
-                </a>
-            </div>
-            {% endif %}
         </div>
     </div>
 </div>
