@@ -24,14 +24,31 @@
 
 ## 运行方式（开发）
 
+先配置环境，我这里用的是 conda + python 3.11
+```bash
+conda create --prefix ./.conda python=3.11
+conda activate ./.conda
+pip install -r requirements.txt
+```
+
 建议在本地开启调试模式（否则 Django admin 的静态资源不会由 `runserver` 提供，表现为“只有文字和链接、没有样式”）。
 
+mac / Linux
 ```bash
 export DJANGO_DEBUG=1
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver 0.0.0.0:8000
 ```
+
+Windows
+```bash
+set DJANGO_DEBUG=1
+python manage.py migrate
+python manage.py createsuperuser
+python manage.py runserver 0.0.0.0:8001  # windows 8000端口被系统服务占用
+```
+
 
 如果你不想改环境变量，也可以临时用：
 
