@@ -19,12 +19,20 @@ class LeaveApplicationForm(forms.ModelForm):
         label="Specific Dates (for discontinuous leave)",
         help_text="Enter dates separated by comma. If used, Start Date and End Date will be ignored."
     )
+    half_day_period = forms.ChoiceField(
+        choices=(("", "---------"),) + LeaveApplication.HALF_DAY_PERIOD_CHOICES,
+        required=False,
+        label="Half Day Period",
+        help_text="Required only for half-day leave.",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
 
     class Meta:
         model = LeaveApplication
-        fields = ['leave_type', 'start_date', 'end_date', 'specific_dates', 'reason']
+        fields = ['leave_type', 'is_half_day', 'half_day_period', 'start_date', 'end_date', 'specific_dates', 'reason']
         widgets = {
             'leave_type': forms.Select(attrs={'class': 'form-select'}),
+            'is_half_day': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
@@ -33,6 +41,18 @@ class LeaveApplicationForm(forms.ModelForm):
         specific_dates_str = cleaned_data.get('specific_dates')
         start_date = cleaned_data.get('start_date')
         end_date = cleaned_data.get('end_date')
+        is_half_day = cleaned_data.get('is_half_day')
+        half_day_period = cleaned_data.get('half_day_period')
+
+        if is_half_day:
+            if not half_day_period:
+                self.add_error('half_day_period', "Please indicate whether this half-day leave is AM or PM.")
+            if start_date and end_date and start_date != end_date:
+                self.add_error('end_date', "For half-day leave, start date and end date must be the same.")
+            elif specific_dates_str and len(specific_dates_str.split(',')) > 1:
+                self.add_error('specific_dates', "For half-day leave, you can only select one date.")
+        else:
+            cleaned_data['half_day_period'] = None
 
         if specific_dates_str:
             dates = []

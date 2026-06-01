@@ -44,6 +44,8 @@ class RoomBooking(models.Model):
         related_name="room_bookings",
     )
     title = models.CharField(_("Title"), max_length=200)
+    remarks = models.TextField(_("Remarks"), blank=True, help_text=_("E.g., laptops or certain devices required"))
+    guest_count = models.PositiveIntegerField(_("Guest Count"), default=0)
     start_at = models.DateTimeField(_("Start Time"))
     end_at = models.DateTimeField(_("End Time"))
     status = models.CharField(_("Status"), max_length=20, choices=STATUS_CHOICES, default=STATUS_BOOKED)

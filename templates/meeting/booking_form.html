@@ -44,6 +44,19 @@
               </div>
             </div>
 
+            <div class="mb-3">
+              <label class="form-label">{{ form.remarks.label }}</label>
+              {{ form.remarks }}
+              {% if form.remarks.help_text %}<div class="form-text">{{ form.remarks.help_text }}</div>{% endif %}
+              {% if form.remarks.errors %}<div class="text-danger small mt-1">{{ form.remarks.errors }}</div>{% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">{{ form.guest_count.label }}</label>
+              {{ form.guest_count }}
+              {% if form.guest_count.errors %}<div class="text-danger small mt-1">{{ form.guest_count.errors }}</div>{% endif %}
+            </div>
+
             <button type="submit" class="btn btn-primary">Submit Booking</button>
             <a href="{% url 'meeting:availability' %}" class="btn btn-link">Check Availability First</a>
           </form>

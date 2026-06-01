@@ -9,7 +9,18 @@ def get_pending_leaves_for_approver(user):
     2. User can approve leaves for managers of departments whose parent department they manage.
     """
     if user.is_superuser:
-        return LeaveApplication.objects.filter(status=LeaveApplication.STATUS_PENDING)
+        return (
+            LeaveApplication.objects.filter(status=LeaveApplication.STATUS_PENDING)
+            .select_related(
+                "applicant",
+                "applicant__department",
+                "applicant__department__manager",
+                "applicant__department__parent",
+                "applicant__department__parent__manager",
+                "reviewer",
+            )
+            .prefetch_related("dates")
+        )
         
     managed_depts = getattr(user, 'managed_departments', None)
     if not managed_depts:
@@ -22,10 +33,21 @@ def get_pending_leaves_for_approver(user):
     # Check if applicant is the manager of their department AND their department's parent is managed by user
     q_child_manager = Q(applicant__department__parent__in=managed_depts.all()) & Q(applicant__department__manager=F('applicant'))
     
-    return LeaveApplication.objects.filter(
-        Q(status=LeaveApplication.STATUS_PENDING) &
-        (q_managed | q_child_manager)
-    ).exclude(applicant=user)
+    return (
+        LeaveApplication.objects.filter(
+            Q(status=LeaveApplication.STATUS_PENDING) & (q_managed | q_child_manager)
+        )
+        .exclude(applicant=user)
+        .select_related(
+            "applicant",
+            "applicant__department",
+            "applicant__department__manager",
+            "applicant__department__parent",
+            "applicant__department__parent__manager",
+            "reviewer",
+        )
+        .prefetch_related("dates")
+    )
 
 def can_approve_application(user, application):
     """

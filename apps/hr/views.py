@@ -17,8 +17,18 @@ class LeaveListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         user = self.request.user
-        queryset = LeaveApplication.objects.filter(applicant=user)
-        return queryset
+        return (
+            LeaveApplication.objects.filter(applicant=user)
+            .select_related(
+                "applicant",
+                "applicant__department",
+                "applicant__department__manager",
+                "applicant__department__parent",
+                "applicant__department__parent__manager",
+                "reviewer",
+            )
+            .prefetch_related("dates")
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -26,9 +36,25 @@ class LeaveListView(LoginRequiredMixin, ListView):
         
         pending_leaves = get_pending_leaves_for_approver(user)
         can_approve = pending_leaves.exists()
+        
+        # history of approvals
+        history_leaves = (
+            LeaveApplication.objects.filter(reviewer=user)
+            .select_related(
+                "applicant",
+                "applicant__department",
+                "applicant__department__manager",
+                "applicant__department__parent",
+                "applicant__department__parent__manager",
+                "reviewer",
+            )
+            .prefetch_related("dates")
+            .order_by("-updated_at")
+        )
             
         context['pending_leaves'] = pending_leaves
-        context['can_approve'] = can_approve
+        context['history_leaves'] = history_leaves
+        context['can_approve'] = can_approve or history_leaves.exists()
         return context
 
 class LeaveCreateView(LoginRequiredMixin, CreateView):
@@ -104,4 +130,27 @@ class LeaveRejectView(LoginRequiredMixin, View):
             return redirect('hr:leave_list')
         
         messages.warning(request, f"已拒绝 {leave.applicant.get_full_name()} 的请假申请")
+        return redirect('hr:leave_list')
+
+class LeaveWithdrawView(LoginRequiredMixin, View):
+    def post(self, request, pk):
+        leave = get_object_or_404(LeaveApplication, pk=pk)
+
+        if leave.applicant != request.user and not request.user.is_superuser:
+            raise PermissionDenied("您没有权限撤回此申请")
+
+        if leave.status != LeaveApplication.STATUS_PENDING:
+            messages.error(request, "该申请状态已变更，无法撤回")
+            return redirect('hr:leave_list')
+
+        try:
+            with transaction.atomic():
+                leave.withdraw()
+                leave.reviewer = None
+                leave.save()
+        except TransitionNotAllowed:
+            messages.error(request, "该申请状态已变更，无法撤回")
+            return redirect('hr:leave_list')
+
+        messages.info(request, "请假申请已撤回")
         return redirect('hr:leave_list')

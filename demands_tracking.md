@@ -1,0 +1,26 @@
+# Demands Tracking Table
+
+| Category                               | Demand                                                                                                        | Status  | Remarks                                                                                                                                                                                                  |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Meeting Rooms - Master**             | A master account to see all the bookings, and the person who reverse/cancel the booking.                      | Solved  | Existent feature, could be able to see through "Admin Panel".                                                                                                                                            |
+| **Meeting Rooms - New Booking**        | Add remarks box for staff when make new booking; Add number of guest when make new booking.                   | Solved  | Added `remarks` field to `RoomBooking` model, updated forms and templates. Added `guest_count` field to `RoomBooking` model, updated forms and templates.                                                |
+| **Meeting Rooms - Check Availability** | Add a visual layout by day: A timeline view (hourly slots with room and booking staff + number of guest)      | <br />  | <br />                                                                                                                                                                                                   |
+| **Leave Management - Master**          | A master account to see all the leave records.                                                                | Solved  | Existent feature, could be able to see through "Admin Panel".                                                                                                                                            |
+| **Leave Management - Application**     | Allow half-day leave. Indicate AM or PM.                                                                      | Solved  | Added `is_half_day` boolean to `LeaveApplication` model, updated form logic, and property `duration_days` returns `0.5` if half day.                                                                     |
+| **Leave Management - Application**     | Remove personal leave.                                                                                        | Solved  | Removed `TYPE_PERSONAL` from `TYPE_CHOICES` in `LeaveApplication` model.                                                                                                                                 |
+| **Leave Management - Application**     | Able to edit/cancel the application after submitting.                                                         | Solved  | <br />                                                                                                                                                                                                   |
+| **Leave Management - Application**     | Display of the approver’s name in the approval process                                                        | Solved  | `Approver` is the expected approver. `Reviewer` is the actual Approver.                                                                                                                                  |
+| **sLeave Management - Approval**       | Can system route to the correct approver?                                                                     | Solved  | Yes, for employee under certain department, the application will be routed to the manager of department. For application from head of department, it will be routed to the manager of parent department. |
+| **Leave Management - Approval**        | System cannot differentiate public holidays from weekends (Sat/Sun) — needs proper holiday recognition logic. | Pending | Can be worked around by carefully select the correct dates you actually want to ask for.                                                                                                                 |
+| **Leave Management - Approval**        | For approvers, add a history view to see past approvals.                                                      | Solved  | Added "Approval History" tab in `leave_list.html` and passed `history_leaves` context in `LeaveListView`.                                                                                                |
+
+<br />
+
+<br />
+
+<br />
+
+<br />
+
+<br />
+

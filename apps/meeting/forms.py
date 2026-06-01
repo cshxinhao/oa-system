@@ -10,12 +10,14 @@ from .models import MeetingRoom, RoomBooking
 class RoomBookingForm(forms.ModelForm):
     class Meta:
         model = RoomBooking
-        fields = ["room", "title", "start_at", "end_at"]
+        fields = ["room", "title", "start_at", "end_at", "remarks", "guest_count"]
         widgets = {
             "room": forms.Select(attrs={"class": "form-select"}),
             "title": forms.TextInput(attrs={"class": "form-control"}),
             "start_at": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}),
             "end_at": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}),
+            "remarks": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "guest_count": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
     def clean(self):
