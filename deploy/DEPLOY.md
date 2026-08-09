@@ -44,8 +44,9 @@ sudo mount /dev/vdb /data
 # 设置开机自动挂载
 echo '/dev/vdb /data ext4 defaults 0 0' | sudo tee -a /etc/fstab
 
-# 创建 OA 数据目录
+# 创建 OA 数据目录，并将属主设为你当前的部署用户（后续会改为 www-data）
 sudo mkdir -p /data/oa-system/media /data/oa-system/backups
+sudo chown -R $USER:$USER /data/oa-system
 ```
 
 ---
@@ -129,15 +130,11 @@ sqlite3 /data/oa-system/db.sqlite3 'PRAGMA journal_mode=WAL;'
 
 ## 第六步：权限配置
 
-`www-data` 用户需要写数据库和上传目录：
+`www-data` 用户（Gunicorn/Nginx 的运行用户）需要写数据库和上传目录。部署完成后，将数据目录交给 www-data：
 
 ```bash
-# www-data 是 Ubuntu 上 Nginx/Gunicorn 的默认运行用户
 sudo chown -R www-data:www-data /data/oa-system
 sudo chown -R www-data:www-data /opt/oa-system/shared/staticfiles
-
-# 确保数据盘目录权限正确
-sudo chmod 750 /data/oa-system
 ```
 
 ---
