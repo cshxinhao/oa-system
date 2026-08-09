@@ -95,6 +95,7 @@
                 </a>
               </li>
               
+              {% if 'finance' in enabled_modules %}
               <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                 <span>Finance</span>
               </h6>
@@ -103,7 +104,9 @@
                   <i class="bi bi-cash-stack"></i> Reimbursements
                 </a>
               </li>
+              {% endif %}
 
+              {% if 'trading' in enabled_modules %}
               <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
                 <span>Trading</span>
               </h6>
@@ -112,24 +115,8 @@
                   <i class="bi bi-graph-up-arrow"></i> Trading Request
                 </a>
               </li>
+              {% endif %}
               
-              {% if user.is_staff %}
-              <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
-                <span>System</span>
-              </h6>
-              {% if user.is_superuser %}
-              <li class="nav-item">
-                <a class="nav-link {% if 'permissions' in request.path %}active{% endif %}" href="{% url 'core:user_permissions' %}">
-                  <i class="bi bi-shield-lock"></i> Permissions
-                </a>
-              </li>
-              {% endif %}
-              <li class="nav-item">
-                <a class="nav-link" href="/admin/">
-                  <i class="bi bi-gear"></i> Admin Panel
-                </a>
-              </li>
-              {% endif %}
             </ul>
           </div>
         </nav>

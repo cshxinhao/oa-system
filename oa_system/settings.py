@@ -45,7 +45,7 @@ SECRET_KEY = os.environ.get(
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=True)
+DEBUG = _env_bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
 
@@ -53,6 +53,10 @@ CSRF_TRUSTED_ORIGINS = _env_csv("DJANGO_CSRF_TRUSTED_ORIGINS", default=[])
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
+
+# Disabled modules — hide from sidebar and dashboard
+# Comma-separated list, e.g. DISABLED_MODULES=finance,trading
+DISABLED_MODULES = _env_csv("DISABLED_MODULES", default=['finance', 'trading'])
 
 
 # Application definition
@@ -107,6 +111,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "core.context_processors.enabled_modules",
             ],
         },
     },

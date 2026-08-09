@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import Permission
@@ -153,26 +154,27 @@ def index(request):
     
     # Pending Reimbursements
     pending_reimbursements = []
-    
-    # 1. Check if user is a checker and has submitted requests assigned
-    if request.user.has_perm('finance.can_check_reimbursement'):
-        checks = ReimbursementRequest.objects.filter(
-            status='SUBMITTED', 
-            checker=request.user
-        )
-        for req in checks:
-            req.todo_type = 'reimbursement_check'
-            pending_reimbursements.append(req)
-            
-    # 2. Check if user is an approver for any checked requests
-    # Get all CHECKED requests
-    checked_requests = ReimbursementRequest.objects.filter(status='CHECKED')
-    
-    for req in checked_requests:
-        approver = get_approver_for_reimbursement(req)
-        if approver == request.user or request.user.is_superuser:
-            req.todo_type = 'reimbursement_approve'
-            pending_reimbursements.append(req)
+
+    if 'finance' not in settings.DISABLED_MODULES:
+        # 1. Check if user is a checker and has submitted requests assigned
+        if request.user.has_perm('finance.can_check_reimbursement'):
+            checks = ReimbursementRequest.objects.filter(
+                status='SUBMITTED',
+                checker=request.user
+            )
+            for req in checks:
+                req.todo_type = 'reimbursement_check'
+                pending_reimbursements.append(req)
+
+        # 2. Check if user is an approver for any checked requests
+        # Get all CHECKED requests
+        checked_requests = ReimbursementRequest.objects.filter(status='CHECKED')
+
+        for req in checked_requests:
+            approver = get_approver_for_reimbursement(req)
+            if approver == request.user or request.user.is_superuser:
+                req.todo_type = 'reimbursement_approve'
+                pending_reimbursements.append(req)
     
     # Mark leave items for the template
     for leave in pending_leaves:
