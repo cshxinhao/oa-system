@@ -8,51 +8,8 @@
 {% endblock %}
 
 {% block content %}
-  <div class="row g-4">
-    <div class="col-lg-6">
-      <div class="card shadow-sm">
-        <div class="card-header bg-white">
-          <h5 class="card-title mb-0">Search Available Rooms by Time Window</h5>
-        </div>
-        <div class="card-body">
-          <form method="get">
-            {% if window_form.non_field_errors %}
-              <div class="alert alert-danger">{{ window_form.non_field_errors }}</div>
-            {% endif %}
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">{{ window_form.start_at.label }}</label>
-                {{ window_form.start_at }}
-                {% if window_form.start_at.errors %}<div class="text-danger small mt-1">{{ window_form.start_at.errors }}</div>{% endif %}
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">{{ window_form.end_at.label }}</label>
-                {{ window_form.end_at }}
-                {% if window_form.end_at.errors %}<div class="text-danger small mt-1">{{ window_form.end_at.errors }}</div>{% endif %}
-              </div>
-            </div>
-            <button type="submit" class="btn btn-outline-primary">Search</button>
-          </form>
-        </div>
-        {% if window_searched %}
-          <div class="list-group list-group-flush">
-            {% for room in available_rooms %}
-              <div class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
-                  <div class="fw-semibold">{{ room.name }}</div>
-                  <div class="text-muted small">{{ room.location|default:"" }}{% if room.capacity %} · {{ room.capacity }} people{% endif %}</div>
-                </div>
-                <a href="{% url 'meeting:booking_create' %}?room={{ room.id }}" class="btn btn-sm btn-primary">Book</a>
-              </div>
-            {% empty %}
-              <div class="list-group-item text-center text-muted py-4">No rooms available for this time slot</div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="col-lg-6">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
       <div class="card shadow-sm">
         <div class="card-header bg-white">
           <h5 class="card-title mb-0">Check Daily Free Slots by Room</h5>

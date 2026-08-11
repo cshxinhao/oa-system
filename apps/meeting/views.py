@@ -4,11 +4,14 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.views.generic import CreateView, ListView, TemplateView, View
 
-from .forms import RoomBookingForm, RoomDayFreeSlotsForm, RoomWindowAvailabilityForm
+from itertools import groupby
+
+from .forms import BookedRoomsFilterForm, RoomBookingForm, RoomDayFreeSlotsForm
 from .models import MeetingRoom, RoomBooking
-from .services import available_rooms, room_free_slots
+from .services import room_free_slots
 
 
 class BookingListView(LoginRequiredMixin, ListView):
@@ -85,24 +88,12 @@ class RoomAvailabilityView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        window_form = RoomWindowAvailabilityForm(self.request.GET or None)
         slots_form = RoomDayFreeSlotsForm(self.request.GET or None)
-
-        context["window_form"] = window_form
         context["slots_form"] = slots_form
 
-        context["available_rooms"] = []
         context["free_slots"] = []
         context["free_slots_room"] = None
-        context["window_searched"] = False
         context["slots_searched"] = False
-
-        if window_form.is_valid():
-            start_at = window_form.cleaned_data.get("start_at")
-            end_at = window_form.cleaned_data.get("end_at")
-            if start_at and end_at:
-                context["window_searched"] = True
-                context["available_rooms"] = available_rooms(start_at, end_at)
 
         if slots_form.is_valid():
             room = slots_form.cleaned_data.get("room")
@@ -119,5 +110,53 @@ class RoomAvailabilityView(LoginRequiredMixin, TemplateView):
                     day_end=day_end,
                 )
 
-        context["rooms"] = MeetingRoom.objects.filter(is_active=True).order_by("name")
+        return context
+
+
+class BookedRoomsView(LoginRequiredMixin, TemplateView):
+    template_name = "meeting/booked_rooms.html"
+
+    def _get_all_bookings(self):
+        return (
+            RoomBooking.objects.filter(
+                status=RoomBooking.STATUS_BOOKED,
+                end_at__date__gte=timezone.now().date(),
+            )
+            .select_related("room", "organizer")
+            .order_by("room__name", "start_at")
+        )
+
+    def _group_by_room(self, bookings):
+        return [
+            {"room": room, "bookings": list(room_bookings)}
+            for room, room_bookings in groupby(bookings, key=lambda b: b.room)
+        ]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        has_params = bool(self.request.GET)
+        form = BookedRoomsFilterForm(self.request.GET or None)
+        context["form"] = form
+        context["searched"] = False
+        context["booked_groups"] = []
+
+        if has_params and form.is_valid():
+            start_date = form.cleaned_data.get("start_date")
+            end_date = form.cleaned_data.get("end_date")
+            if start_date and end_date:
+                context["searched"] = True
+                bookings = (
+                    RoomBooking.objects.filter(
+                        status=RoomBooking.STATUS_BOOKED,
+                        start_at__date__lte=end_date,
+                        end_at__date__gte=start_date,
+                    )
+                    .select_related("room", "organizer")
+                    .order_by("room__name", "start_at")
+                )
+                context["booked_groups"] = self._group_by_room(bookings)
+        elif not has_params:
+            # First visit: show all booked rooms
+            context["booked_groups"] = self._group_by_room(self._get_all_bookings())
+
         return context

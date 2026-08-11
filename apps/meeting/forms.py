@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import time
 
 from django import forms
+from django.utils import timezone
 
 from .models import MeetingRoom, RoomBooking
 
@@ -105,5 +106,37 @@ class RoomDayFreeSlotsForm(forms.Form):
 
         if day_start and day_end and day_start >= day_end:
             self.add_error("day_end", "Day end time must be later than day start time")
+
+        return cleaned_data
+
+
+class BookedRoomsFilterForm(forms.Form):
+    start_date = forms.DateField(
+        label="Start Date",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+    )
+    end_date = forms.DateField(
+        label="End Date",
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        today = timezone.now().date()
+        self.fields["start_date"].initial = today
+        self.fields["end_date"].initial = today
+
+    def clean(self):
+        cleaned_data = super().clean()
+        start_date = cleaned_data.get("start_date")
+        end_date = cleaned_data.get("end_date")
+
+        if (start_date and not end_date) or (end_date and not start_date):
+            raise forms.ValidationError("Please provide both start and end dates")
+
+        if start_date and end_date and start_date > end_date:
+            self.add_error("end_date", "End date must not be earlier than start date")
 
         return cleaned_data

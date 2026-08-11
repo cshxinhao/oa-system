@@ -3,6 +3,7 @@
 {% block page_title %}Meeting Room Booking{% endblock %}
 
 {% block actions %}
+  <a href="{% url 'meeting:booked_rooms' %}" class="btn btn-sm btn-outline-info">Booked Rooms</a>
   <a href="{% url 'meeting:availability' %}" class="btn btn-sm btn-outline-secondary">Check Availability</a>
   <a href="{% url 'meeting:booking_create' %}" class="btn btn-sm btn-primary ms-2">New Booking</a>
 {% endblock %}
