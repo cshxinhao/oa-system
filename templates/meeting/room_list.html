@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Meeting Rooms{% endblock %}
+
+{% block actions %}
+  <a href="{% url 'meeting:booked_rooms' %}" class="btn btn-sm btn-outline-info">Booked Rooms</a>
+  <a href="{% url 'meeting:availability' %}" class="btn btn-sm btn-outline-secondary">Check Availability</a>
+  <a href="{% url 'meeting:booking_list' %}" class="btn btn-sm btn-outline-secondary">My Bookings</a>
+{% endblock %}
+
+{% block content %}
+  <div class="row g-4">
+    {% for room in rooms %}
+      <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm h-100">
+          <div class="card-body">
+            <h5 class="card-title">{{ room.name }}</h5>
+            {% if room.location %}
+              <p class="text-muted small mb-2"><i class="bi bi-geo-alt me-1"></i>{{ room.location }}</p>
+            {% endif %}
+            <div class="d-flex gap-3 mb-3">
+              <span><i class="bi bi-people me-1"></i><strong>{{ room.capacity }}</strong> capacity</span>
+            </div>
+            {% if room.description %}
+              <p class="card-text small text-muted">{{ room.description|truncatechars:120 }}</p>
+            {% endif %}
+          </div>
+          <div class="card-footer bg-white border-top-0 text-end">
+            <a href="{% url 'meeting:booking_create' %}?room={{ room.id }}" class="btn btn-sm btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>Book Now
+            </a>
+          </div>
+        </div>
+      </div>
+    {% empty %}
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-door-open display-4 d-block mb-3"></i>
+            <p class="mb-0">No meeting rooms available.</p>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+{% endblock %}

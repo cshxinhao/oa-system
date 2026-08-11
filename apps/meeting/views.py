@@ -82,6 +82,15 @@ class BookingCancelView(LoginRequiredMixin, View):
         return redirect("meeting:booking_list")
 
 
+class MeetingRoomListView(LoginRequiredMixin, ListView):
+    model = MeetingRoom
+    template_name = "meeting/room_list.html"
+    context_object_name = "rooms"
+
+    def get_queryset(self):
+        return MeetingRoom.objects.filter(is_active=True).order_by("name")
+
+
 class RoomAvailabilityView(LoginRequiredMixin, TemplateView):
     template_name = "meeting/availability.html"
 
