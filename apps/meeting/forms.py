@@ -15,11 +15,11 @@ class RoomBookingForm(forms.ModelForm):
     )
     start_time = forms.TimeField(
         label="Start Time",
-        widget=forms.TimeInput(attrs={"type": "time", "step": 600, "class": "form-control"}),
+        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
     )
     end_time = forms.TimeField(
         label="End Time",
-        widget=forms.TimeInput(attrs={"type": "time", "step": 600, "class": "form-control"}),
+        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
     )
 
     class Meta:
