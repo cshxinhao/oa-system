@@ -36,8 +36,8 @@
                 <i class="bi bi-person-circle me-1"></i> {{ user.get_full_name|default:user.username }}
             </a>
             <ul class="dropdown-menu dropdown-menu-end position-absolute">
-                <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Profile</a></li>
-                <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                <li><a class="dropdown-item" href="{% url 'core:profile' %}"><i class="bi bi-person me-2"></i>Profile</a></li>
+                <li><a class="dropdown-item" href="{% url 'core:settings' %}"><i class="bi bi-gear me-2"></i>Settings</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <form action="{% url 'logout' %}" method="post" class="d-inline">

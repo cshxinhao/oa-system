@@ -162,7 +162,11 @@ ls -la /run/oa-system/gunicorn.sock
 sudo cp /opt/oa-system/current/deploy/nginx-oa-system.conf /etc/nginx/sites-available/oa-system.conf
 ```
 
+```bash
 编辑 `/etc/nginx/sites-available/oa-system.conf`，将 `server_name` 改为你的域名或 IP。
+
+或者用 sudo sed -i 's/server_name your-domain.com;/server_name oasystem.avenue.limited;/' /etc/nginx/sites-available/oa-system.conf
+```
 
 ```bash
 sudo ln -sf /etc/nginx/sites-available/oa-system.conf /etc/nginx/sites-enabled/oa-system.conf
@@ -254,8 +258,10 @@ DJANGO_SECURE_SSL_REDIRECT=1
 cd /opt/oa-system/current
 git pull
 /opt/oa-system/venv/bin/pip install -r requirements.txt
+sudo chown devuser:devuser /data/oa-system /data/oa-system/db.sqlite3
 /opt/oa-system/venv/bin/python manage.py migrate
 /opt/oa-system/venv/bin/python manage.py collectstatic --noinput
+sudo chown -R www-data:www-data /data/oa-system
 sudo systemctl restart oa-system
 ```
 

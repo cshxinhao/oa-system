@@ -1,11 +1,14 @@
 from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.models import Permission
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.contenttypes.models import ContentType
 from django.contrib import messages
-from django.views.generic import ListView
+from django.urls import reverse_lazy
+from django.views.generic import ListView, TemplateView, FormView
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from .models import User, Department
@@ -144,6 +147,33 @@ def get_approver_for_reimbursement(reimbursement):
         return requester.department.parent.manager
         
     return None
+
+
+class ProfileView(LoginRequiredMixin, TemplateView):
+    template_name = 'core/profile.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['profile_user'] = self.request.user
+        return context
+
+
+class SettingsView(LoginRequiredMixin, FormView):
+    template_name = 'core/settings.html'
+    form_class = PasswordChangeForm
+    success_url = reverse_lazy('core:settings')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        form.save()
+        update_session_auth_hash(self.request, form.user)
+        messages.success(self.request, 'Your password was changed successfully.')
+        return super().form_valid(form)
+
 
 @login_required
 def index(request):

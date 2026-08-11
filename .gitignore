@@ -5,6 +5,7 @@ __pycache__/
 media/
 staticfiles/
 venv/
+.conda/
 ENV/
 .DS_Store
 .trae/

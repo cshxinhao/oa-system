@@ -56,7 +56,7 @@ SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
 
 # Disabled modules — hide from sidebar and dashboard
 # Comma-separated list, e.g. DISABLED_MODULES=finance,trading
-DISABLED_MODULES = _env_csv("DISABLED_MODULES", default=['finance', 'trading'])
+DISABLED_MODULES = _env_csv("DISABLED_MODULES", default=['finance'])
 
 
 # Application definition
