@@ -69,6 +69,13 @@ class RoomBookingForm(forms.ModelForm):
             cleaned_data["end_at"] = end_at
 
             if room:
+                guest_count = cleaned_data.get("guest_count", 0)
+                if guest_count is not None and room.capacity and guest_count > room.capacity:
+                    self.add_error(
+                        "guest_count",
+                        f"The number of guests ({guest_count}) exceeds the room capacity ({room.capacity}).",
+                    )
+
                 conflict_exists = (
                     RoomBooking.objects.filter(room=room, status=RoomBooking.STATUS_BOOKED)
                     .exclude(pk=self.instance.pk)
