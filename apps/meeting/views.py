@@ -40,17 +40,13 @@ class BookingCreateView(LoginRequiredMixin, CreateView):
         room_id = self.request.GET.get("room")
         if room_id:
             initial["room"] = room_id
-        start_at = self.request.GET.get("start_at")
-        end_at = self.request.GET.get("end_at")
-        if start_at:
-            initial["start_at"] = start_at
-        if end_at:
-            initial["end_at"] = end_at
         return initial
 
     def form_valid(self, form):
         form.instance.organizer = self.request.user
         form.instance.status = RoomBooking.STATUS_BOOKED
+        form.instance.start_at = form.cleaned_data.get("start_at")
+        form.instance.end_at = form.cleaned_data.get("end_at")
         try:
             with transaction.atomic():
                 self.object = form.save(commit=False)

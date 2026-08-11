@@ -31,16 +31,22 @@
               {% if form.title.errors %}<div class="text-danger small mt-1">{{ form.title.errors }}</div>{% endif %}
             </div>
 
+            <div class="mb-3">
+              <label class="form-label">{{ form.booking_date.label }}</label>
+              {{ form.booking_date }}
+              {% if form.booking_date.errors %}<div class="text-danger small mt-1">{{ form.booking_date.errors }}</div>{% endif %}
+            </div>
+
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label class="form-label">{{ form.start_at.label }}</label>
-                {{ form.start_at }}
-                {% if form.start_at.errors %}<div class="text-danger small mt-1">{{ form.start_at.errors }}</div>{% endif %}
+                <label class="form-label">{{ form.start_time.label }}</label>
+                {{ form.start_time }}
+                {% if form.start_time.errors %}<div class="text-danger small mt-1">{{ form.start_time.errors }}</div>{% endif %}
               </div>
               <div class="col-md-6 mb-3">
-                <label class="form-label">{{ form.end_at.label }}</label>
-                {{ form.end_at }}
-                {% if form.end_at.errors %}<div class="text-danger small mt-1">{{ form.end_at.errors }}</div>{% endif %}
+                <label class="form-label">{{ form.end_time.label }}</label>
+                {{ form.end_time }}
+                {% if form.end_time.errors %}<div class="text-danger small mt-1">{{ form.end_time.errors }}</div>{% endif %}
               </div>
             </div>
 
@@ -64,5 +70,25 @@
       </div>
     </div>
   </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const startTime = document.getElementById('{{ form.start_time.id_for_label }}');
+    const endTime = document.getElementById('{{ form.end_time.id_for_label }}');
+
+    if (startTime && endTime) {
+      startTime.addEventListener('change', function () {
+        if (!startTime.value) return;
+        const [h, m] = startTime.value.split(':').map(Number);
+        let total = h * 60 + m + 30;
+        let newH = Math.floor(total / 60) % 24;
+        let newM = total % 60;
+        endTime.value = String(newH).padStart(2, '0') + ':' + String(newM).padStart(2, '0');
+      });
+    }
+  });
+</script>
 {% endblock %}
 
