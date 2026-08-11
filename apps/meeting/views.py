@@ -22,7 +22,10 @@ class BookingListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         user = self.request.user
         queryset = (
-            RoomBooking.objects.filter(organizer=user)
+            RoomBooking.objects.filter(
+                organizer=user,
+                end_at__date__gte=timezone.now().date(),
+            )
             .select_related("room", "organizer")
             .order_by("-start_at")
         )
