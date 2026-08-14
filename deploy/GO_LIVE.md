@@ -126,9 +126,16 @@ curl -sI https://你的域名/static/css/style.css | head -1
 
 确认 `DEPLOY.md` 中的备份脚本正在运行：
 ```bash
-systemctl status oa-backup.timer
-ls -la /data/backups/
+# 备份目录里应有按小时生成的 db-*.sqlite3 文件
+ls -lt /data/oa-system/backups/ | head -5
+
+# 日志应每小时新增一行 "Backup completed"
+sudo tail -20 /data/oa-system/backups/backup.log
 ```
+
+> 注意：备份日志必须写到 `/data/oa-system/backups/backup.log`（数据盘），
+> 不能写 `/var/log/` —— www-data 无权在那里创建文件，重定向失败会导致
+> cron 里的备份脚本完全不会执行且无任何报错。
 
 ---
 

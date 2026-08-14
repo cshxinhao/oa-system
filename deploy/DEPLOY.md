@@ -224,10 +224,26 @@ echo "[$(date)] Backup completed"
 sudo chmod +x /opt/oa-system/scripts/backup-db.sh
 
 # 每小时备份，保留 30 天
-echo "0 * * * * /opt/oa-system/scripts/backup-db.sh >> /var/log/oa-backup.log 2>&1" | sudo crontab -u www-data -
+# 注意：日志必须写到 www-data 有写权限的路径（数据盘），
+# 不能写 /var/log —— www-data 无权在那里创建文件，
+# 重定向失败会导致脚本完全不会执行（且无任何报错）。
+echo "0 * * * * /opt/oa-system/scripts/backup-db.sh >> /data/oa-system/backups/backup.log 2>&1" | sudo crontab -u www-data -
 ```
 
 > 如需远程备份，可在脚本末尾添加 `ossutil cp` 或 `rsync` 将备份同步到 OSS/其他服务器。
+
+### 验证备份
+
+```bash
+# 备份目录里应有按小时生成的 db-*.sqlite3 文件
+ls -lt /data/oa-system/backups/ | head -5
+
+# 日志应每小时新增一行 "Backup completed"
+sudo tail -20 /data/oa-system/backups/backup.log
+
+# 确认 crontab 已注册
+sudo crontab -u www-data -l
+```
 
 ---
 
