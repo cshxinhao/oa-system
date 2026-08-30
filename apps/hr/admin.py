@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import LeaveApplication
+from .models import LeaveApplication, LeaveQuota
 
 @admin.register(LeaveApplication)
 class LeaveApplicationAdmin(admin.ModelAdmin):
@@ -8,7 +8,8 @@ class LeaveApplicationAdmin(admin.ModelAdmin):
     search_fields = ('applicant__username', 'reason')
     readonly_fields = ('status',) # 状态由工作流控制
 
-    def approver(self, obj):
-        return obj.expected_approver
-
-    approver.short_description = "Approver"
+@admin.register(LeaveQuota)
+class LeaveQuotaAdmin(admin.ModelAdmin):
+    list_display = ('user', 'year', 'leave_type', 'total_days', 'used_days', 'remaining_days')
+    search_fields = ('user__username', 'user__first_name')
+    list_filter = ('year', 'leave_type')

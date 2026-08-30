@@ -9,6 +9,7 @@ from django_fsm import TransitionNotAllowed
 from .models import LeaveApplication
 from .forms import LeaveApplicationForm
 from .permissions import get_pending_leaves_for_approver, can_approve_application
+from .services import quota_summary, quota_summaries
 
 class LeaveListView(LoginRequiredMixin, ListView):
     model = LeaveApplication
@@ -25,6 +26,7 @@ class LeaveListView(LoginRequiredMixin, ListView):
                 "applicant__department__manager",
                 "applicant__department__parent",
                 "applicant__department__parent__manager",
+                "approver",
                 "reviewer",
             )
             .prefetch_related("dates")
@@ -33,11 +35,13 @@ class LeaveListView(LoginRequiredMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
-        
+
         pending_leaves = get_pending_leaves_for_approver(user)
+        for leave in pending_leaves:
+            leave.applicant_quota_summary = quota_summary(leave.applicant)
         can_approve = pending_leaves.exists()
-        
-        # history of approvals
+
+        # history of approvals: leaves this user actually reviewed
         history_leaves = (
             LeaveApplication.objects.filter(reviewer=user)
             .select_related(
@@ -46,15 +50,17 @@ class LeaveListView(LoginRequiredMixin, ListView):
                 "applicant__department__manager",
                 "applicant__department__parent",
                 "applicant__department__parent__manager",
-                "reviewer",
+                "approver",
             )
             .prefetch_related("dates")
             .order_by("-updated_at")
         )
-            
+
         context['pending_leaves'] = pending_leaves
         context['history_leaves'] = history_leaves
         context['can_approve'] = can_approve or history_leaves.exists()
+        context['annual_quota'] = quota_summary(user)
+        context['quota_list'] = quota_summaries(user)
         return context
 
 class LeaveCreateView(LoginRequiredMixin, CreateView):
@@ -62,6 +68,11 @@ class LeaveCreateView(LoginRequiredMixin, CreateView):
     form_class = LeaveApplicationForm
     template_name = 'hr/leave_form.html'
     success_url = reverse_lazy('hr:leave_list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
 
     def form_valid(self, form):
         form.instance.applicant = self.request.user
@@ -81,9 +92,9 @@ class LeaveCreateView(LoginRequiredMixin, CreateView):
                 self.object.submit()
                 self.object.save()
         except TransitionNotAllowed:
-            form.add_error(None, "当前申请无法提交，请刷新后重试")
+            form.add_error(None, "The application cannot be submitted at this time. Please refresh and try again.")
             return self.form_invalid(form)
-        messages.success(self.request, "请假申请已提交")
+        messages.success(self.request, "Leave application submitted")
         return redirect(self.success_url)
 
 class LeaveApproveView(LoginRequiredMixin, View):
@@ -91,22 +102,22 @@ class LeaveApproveView(LoginRequiredMixin, View):
         leave = get_object_or_404(LeaveApplication, pk=pk)
         
         if not can_approve_application(request.user, leave):
-            raise PermissionDenied("您没有权限审批此申请")
-            
+            raise PermissionDenied("You do not have permission to approve this application.")
+
         if leave.status != LeaveApplication.STATUS_PENDING:
-            messages.error(request, "该申请状态已变更，无法审批")
+            messages.error(request, "The application status has changed and it can no longer be approved.")
             return redirect('hr:leave_list')
-            
+
         try:
             with transaction.atomic():
                 leave.approve()
                 leave.reviewer = request.user
                 leave.save()
         except TransitionNotAllowed:
-            messages.error(request, "该申请状态已变更，无法审批")
+            messages.error(request, "The application status has changed and it can no longer be approved.")
             return redirect('hr:leave_list')
-        
-        messages.success(request, f"已批准 {leave.applicant.get_full_name()} 的请假申请")
+
+        messages.success(request, f"Approved the leave application of {leave.applicant.get_full_name()}")
         return redirect('hr:leave_list')
 
 class LeaveRejectView(LoginRequiredMixin, View):
@@ -114,22 +125,22 @@ class LeaveRejectView(LoginRequiredMixin, View):
         leave = get_object_or_404(LeaveApplication, pk=pk)
         
         if not can_approve_application(request.user, leave):
-            raise PermissionDenied("您没有权限审批此申请")
-            
+            raise PermissionDenied("You do not have permission to approve this application.")
+
         if leave.status != LeaveApplication.STATUS_PENDING:
-            messages.error(request, "该申请状态已变更，无法审批")
+            messages.error(request, "The application status has changed and it can no longer be rejected.")
             return redirect('hr:leave_list')
-            
+
         try:
             with transaction.atomic():
                 leave.reject()
                 leave.reviewer = request.user
                 leave.save()
         except TransitionNotAllowed:
-            messages.error(request, "该申请状态已变更，无法拒绝")
+            messages.error(request, "The application status has changed and it can no longer be rejected.")
             return redirect('hr:leave_list')
-        
-        messages.warning(request, f"已拒绝 {leave.applicant.get_full_name()} 的请假申请")
+
+        messages.warning(request, f"Rejected the leave application of {leave.applicant.get_full_name()}")
         return redirect('hr:leave_list')
 
 class LeaveWithdrawView(LoginRequiredMixin, View):
@@ -137,20 +148,19 @@ class LeaveWithdrawView(LoginRequiredMixin, View):
         leave = get_object_or_404(LeaveApplication, pk=pk)
 
         if leave.applicant != request.user and not request.user.is_superuser:
-            raise PermissionDenied("您没有权限撤回此申请")
+            raise PermissionDenied("You do not have permission to withdraw this application.")
 
         if leave.status != LeaveApplication.STATUS_PENDING:
-            messages.error(request, "该申请状态已变更，无法撤回")
+            messages.error(request, "The application status has changed and it can no longer be withdrawn.")
             return redirect('hr:leave_list')
 
         try:
             with transaction.atomic():
                 leave.withdraw()
-                leave.reviewer = None
                 leave.save()
         except TransitionNotAllowed:
-            messages.error(request, "该申请状态已变更，无法撤回")
+            messages.error(request, "The application status has changed and it can no longer be withdrawn.")
             return redirect('hr:leave_list')
 
-        messages.info(request, "请假申请已撤回")
+        messages.info(request, "Leave application withdrawn")
         return redirect('hr:leave_list')

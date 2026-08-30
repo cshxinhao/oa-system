@@ -1,6 +1,10 @@
 from django import forms
-from .models import LeaveApplication
 from datetime import datetime
+
+from core.models import User
+from .models import LeaveApplication, LeaveQuota
+from .permissions import get_eligible_approvers, get_org_approver
+from .services import requested_duration, annual_leave_used_days
 
 class LeaveApplicationForm(forms.ModelForm):
     start_date = forms.DateField(
@@ -26,15 +30,47 @@ class LeaveApplicationForm(forms.ModelForm):
         help_text="Required only for half-day leave.",
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
+    approver = forms.ModelChoiceField(
+        queryset=User.objects.none(),
+        required=False,
+        label="Approver",
+        help_text="Choose your approver: your department manager, or a global approver.",
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        error_messages={'invalid_choice': 'The selected approver is not eligible to approve this application. Please choose again.'},
+    )
 
     class Meta:
         model = LeaveApplication
-        fields = ['leave_type', 'is_half_day', 'half_day_period', 'start_date', 'end_date', 'specific_dates', 'reason']
+        fields = ['leave_type', 'is_half_day', 'half_day_period', 'start_date', 'end_date', 'specific_dates', 'approver', 'reason']
         widgets = {
             'leave_type': forms.Select(attrs={'class': 'form-select'}),
             'is_half_day': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        if user is not None:
+            eligible = get_eligible_approvers(user)
+            self.eligible_ids = set(eligible.values_list('pk', flat=True))
+            self.fields['approver'].queryset = eligible
+            org = get_org_approver(user)
+            if org and org.pk in self.eligible_ids:
+                self.fields['approver'].initial = org.pk
+        else:
+            self.eligible_ids = set()
+
+    def clean_approver(self):
+        value = self.cleaned_data.get('approver')
+        if value:
+            return value
+        if self.data and self.data.get('approver'):
+            # a value was submitted but failed the queryset check (invalid_choice)
+            return None
+        if not self.eligible_ids:
+            raise forms.ValidationError("No eligible approver is available. Please contact an administrator to set up a department manager or a global approver.")
+        raise forms.ValidationError("Please select an approver.")
 
     def clean(self):
         cleaned_data = super().clean()
@@ -64,7 +100,7 @@ class LeaveApplicationForm(forms.ModelForm):
             except ValueError:
                 self.add_error('specific_dates', "Invalid date format. Use YYYY-MM-DD, separated by commas.")
                 return cleaned_data
-            
+
             if not dates:
                  self.add_error('specific_dates', "Please enter valid dates.")
                  return cleaned_data
@@ -73,12 +109,36 @@ class LeaveApplicationForm(forms.ModelForm):
             cleaned_data['start_date'] = dates[0]
             cleaned_data['end_date'] = dates[-1]
             cleaned_data['parsed_dates'] = dates
-            
+
         else:
             if not start_date or not end_date:
                 self.add_error('start_date', "Start date is required if no specific dates provided.")
                 self.add_error('end_date', "End date is required if no specific dates provided.")
             elif start_date > end_date:
                 self.add_error('end_date', "End date cannot be earlier than start date")
+
+        # Annual leave quota check
+        if cleaned_data.get('leave_type') == LeaveApplication.TYPE_ANNUAL and cleaned_data.get('start_date'):
+            if self.user is None:
+                self.add_error('leave_type', "Unable to verify annual leave balance. Please log in again.")
+                return cleaned_data
+            year = cleaned_data['start_date'].year
+            try:
+                quota = LeaveQuota.objects.get(user=self.user, year=year, leave_type=LeaveApplication.TYPE_ANNUAL)
+            except LeaveQuota.DoesNotExist:
+                self.add_error('leave_type', "No annual leave quota has been configured for you. Please contact an administrator.")
+                return cleaned_data
+            requested = requested_duration(cleaned_data)
+            if requested == 0:
+                self.add_error('leave_type', "The selected dates contain no working days.")
+                return cleaned_data
+            used = annual_leave_used_days(self.user, year)
+            remaining = quota.total_days - used
+            if requested > remaining:
+                self.add_error(
+                    'leave_type',
+                    f"Insufficient annual leave balance: used {used} / {quota.total_days} days, "
+                    f"requesting {requested} days, remaining {remaining} days"
+                )
 
         return cleaned_data

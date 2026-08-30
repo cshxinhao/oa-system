@@ -63,15 +63,23 @@ class LeaveApplication(models.Model):
     
     status = FSMField(_("Status"), default=STATUS_DRAFT, choices=STATUS_CHOICES, protected=True)
     
+    approver = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("Approver"),
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='leaves_to_approve',
+    )
     reviewer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         verbose_name=_("Reviewer"),
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='leaves_to_review'
+        related_name='leaves_to_review',
     )
-    
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -87,23 +95,13 @@ class LeaveApplication(models.Model):
     def duration_days(self):
         if self.is_half_day:
             return 0.5
+        # weekends do not count toward any leave type's duration
+        from .services import count_working_days, is_weekend
         if self.pk and self.dates.exists():
-            return self.dates.count()
+            return sum(1 for d in self.dates.all() if not is_weekend(d.date))
         if not self.start_date or not self.end_date:
             return 0
-        return (self.end_date - self.start_date).days + 1
-
-    @property
-    def expected_approver(self):
-        applicant = self.applicant
-        dept = getattr(applicant, "department", None)
-        if not dept or not dept.manager:
-            return None
-        if dept.manager != applicant:
-            return dept.manager
-        if dept.parent and dept.parent.manager:
-            return dept.parent.manager
-        return None
+        return count_working_days(self.start_date, self.end_date)
 
     @transition(field=status, source=STATUS_DRAFT, target=STATUS_PENDING)
     def submit(self):
@@ -128,9 +126,50 @@ class LeaveApplication(models.Model):
 class LeaveApplicationDate(models.Model):
     application = models.ForeignKey(LeaveApplication, on_delete=models.CASCADE, related_name='dates')
     date = models.DateField()
-    
+
     class Meta:
         ordering = ['date']
 
     def __str__(self):
         return str(self.date)
+
+class LeaveQuota(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("User"),
+        on_delete=models.CASCADE,
+        related_name='leave_quotas',
+    )
+    year = models.PositiveSmallIntegerField(_("Year"))
+    leave_type = models.CharField(
+        _("Leave Type"),
+        max_length=20,
+        choices=LeaveApplication.TYPE_CHOICES,
+        default=LeaveApplication.TYPE_ANNUAL,
+    )
+    total_days = models.DecimalField(
+        _("Total Days"),
+        max_digits=4,
+        decimal_places=1,
+        help_text=_("Leave entitlement for the year (half days allowed)."),
+    )
+
+    class Meta:
+        verbose_name = _("Leave Quota")
+        verbose_name_plural = _("Leave Quotas")
+        ordering = ['user', '-year']
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'year', 'leave_type'], name='unique_user_year_type_quota'),
+        ]
+
+    def __str__(self):
+        return f"{self.user} {self.year} {self.get_leave_type_display()}: {self.total_days} days"
+
+    @property
+    def used_days(self):
+        from .services import leave_used_days
+        return leave_used_days(self.user, self.year, self.leave_type)
+
+    @property
+    def remaining_days(self):
+        return self.total_days - self.used_days

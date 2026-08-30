@@ -42,7 +42,12 @@ class User(AbstractUser):
     )
     position = models.CharField(_("Position"), max_length=100, blank=True)
     phone = models.CharField(_("Phone"), max_length=20, blank=True)
-    
+    can_approve_all_leaves = models.BooleanField(
+        _("Can Approve All Leaves"),
+        default=False,
+        help_text=_("Global approver: appears in every employee's approver picker and can approve all leave applications."),
+    )
+
     class Meta:
         verbose_name = _("User")
         verbose_name_plural = _("Users")

@@ -11,6 +11,9 @@
 {% block content %}
 <ul class="nav nav-tabs mb-4" id="leaveTabs" role="tablist">
   <li class="nav-item" role="presentation">
+    <button class="nav-link" id="leave-quota-tab" data-bs-toggle="tab" data-bs-target="#leave-quota" type="button" role="tab" aria-controls="leave-quota" aria-selected="false">Leave Quota</button>
+  </li>
+  <li class="nav-item" role="presentation">
     <button class="nav-link active" id="my-leaves-tab" data-bs-toggle="tab" data-bs-target="#my-leaves" type="button" role="tab" aria-controls="my-leaves" aria-selected="true">My Applications</button>
   </li>
   {% if can_approve %}
@@ -31,8 +34,45 @@
 </ul>
 
 <div class="tab-content" id="leaveTabsContent">
+  <!-- Leave Quota -->
+  <div class="tab-pane fade" id="leave-quota" role="tabpanel" aria-labelledby="leave-quota-tab">
+    <div class="table-responsive">
+      <table class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th>Leave Type</th>
+            <th>Year</th>
+            <th>Total</th>
+            <th>Used</th>
+            <th>Remaining</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for quota in quota_list %}
+          <tr>
+            <td>{{ quota.leave_type_display }}</td>
+            <td>{{ quota.year }}</td>
+            <td>{{ quota.total }}</td>
+            <td>{{ quota.used }}</td>
+            <td>{{ quota.remaining }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="text-center">No leave quota configured</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- My Applications -->
   <div class="tab-pane fade show active" id="my-leaves" role="tabpanel" aria-labelledby="my-leaves-tab">
+    {% if annual_quota %}
+    <div class="alert alert-info py-2">
+      Annual Leave {{ annual_quota.year }}: Used {{ annual_quota.used }} / {{ annual_quota.total }} days
+    </div>
+    {% endif %}
     <div class="table-responsive">
       <table class="table table-striped table-sm">
         <thead>
@@ -68,8 +108,8 @@
                 </span>
             </td>
             <td>
-              {% if leave.expected_approver %}
-                {{ leave.expected_approver.get_full_name|default:leave.expected_approver.username }}
+              {% if leave.approver %}
+                {{ leave.approver.get_full_name|default:leave.approver.username }}
               {% else %}
                 -
               {% endif %}
@@ -112,6 +152,7 @@
           <tr>
             <th>Applicant</th>
             <th>Department</th>
+            <th>Annual Used</th>
             <th>Approver</th>
             <th>Type</th>
             <th>Date(s)</th>
@@ -126,8 +167,15 @@
             <td>{{ leave.applicant.get_full_name|default:leave.applicant.username }}</td>
             <td>{{ leave.applicant.department.name|default:"-" }}</td>
             <td>
-              {% if leave.expected_approver %}
-                {{ leave.expected_approver.get_full_name|default:leave.expected_approver.username }}
+              {% if leave.applicant_quota_summary %}
+                {{ leave.applicant_quota_summary.used }}/{{ leave.applicant_quota_summary.total }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% if leave.approver %}
+                {{ leave.approver.get_full_name|default:leave.approver.username }}
               {% else %}
                 -
               {% endif %}
@@ -160,7 +208,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="8" class="text-center">No pending leave approvals</td>
+            <td colspan="9" class="text-center">No pending leave approvals</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -190,8 +238,8 @@
             <td>{{ leave.applicant.get_full_name|default:leave.applicant.username }}</td>
             <td>{{ leave.applicant.department.name|default:"-" }}</td>
             <td>
-              {% if leave.expected_approver %}
-                {{ leave.expected_approver.get_full_name|default:leave.expected_approver.username }}
+              {% if leave.approver %}
+                {{ leave.approver.get_full_name|default:leave.approver.username }}
               {% else %}
                 -
               {% endif %}
