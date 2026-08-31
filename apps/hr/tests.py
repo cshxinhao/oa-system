@@ -1,12 +1,14 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.contrib import admin
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from core.models import Department, User
-from hr.models import LeaveApplication, LeaveApplicationDate, LeaveQuota
-from hr.permissions import can_approve_application, get_pending_leaves_for_approver
+from hr.admin import LeaveApproverSettingAdmin
+from hr.models import LeaveApplication, LeaveApplicationDate, LeaveQuota, LeaveApproverSetting
+from hr.permissions import can_approve_application, get_eligible_approvers, get_pending_leaves_for_approver
 from hr.services import annual_leave_used_days
 
 
@@ -422,3 +424,208 @@ class LeaveFlowTests(TestCase):
         resp = self.client.get(reverse("hr:leave_list"))
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "0.0/10.0")
+
+
+class LeaveApproverSettingTests(TestCase):
+    def setUp(self):
+        self.parent_department = Department.objects.create(name="总部")
+        self.parent_manager = User.objects.create_user(
+            username="parent_manager", password="pwd", department=self.parent_department
+        )
+        self.parent_department.manager = self.parent_manager
+        self.parent_department.save()
+        self.department = Department.objects.create(name="研发部", parent=self.parent_department)
+        self.manager = User.objects.create_user(
+            username="manager",
+            password="pwd",
+            department=self.department,
+        )
+        self.department.manager = self.manager
+        self.department.save()
+        self.employee = User.objects.create_user(
+            username="employee",
+            password="pwd",
+            department=self.department,
+        )
+        self.custom_approver = User.objects.create_user(username="custom_approver", password="pwd")
+        self.global_approver = User.objects.create_user(
+            username="global_approver", password="pwd", can_approve_all_leaves=True
+        )
+        self.admin_user = User.objects.create_superuser(username="admin", password="pwd")
+
+    def leave_data(self, **overrides):
+        data = {
+            "leave_type": "sick",
+            "start_date": "2026-02-14",
+            "end_date": "2026-02-15",
+            "approver": self.custom_approver.pk,
+            "reason": "自定义审批人测试",
+        }
+        data.update(overrides)
+        return data
+
+    # ---------- runtime eligibility ----------
+
+    def test_configured_list_replaces_org_approver_in_picker(self):
+        setting = LeaveApproverSetting.objects.create(user=self.employee)
+        setting.approvers.add(self.custom_approver)
+
+        self.client.force_login(self.employee)
+        resp = self.client.get(reverse("hr:leave_create"))
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["form"]
+        ids = set(form.fields["approver"].queryset.values_list("pk", flat=True))
+        self.assertIn(self.custom_approver.pk, ids)
+        self.assertNotIn(self.manager.pk, ids)
+        # the org approver is no longer eligible, so nothing is preselected
+        self.assertIsNone(form.fields["approver"].initial)
+
+        resp2 = self.client.post(reverse("hr:leave_create"), data=self.leave_data())
+        self.assertEqual(resp2.status_code, 302)
+        application = LeaveApplication.objects.get(applicant=self.employee)
+        self.assertEqual(application.approver, self.custom_approver)
+
+    def test_global_approvers_merged_with_configured_list(self):
+        setting = LeaveApproverSetting.objects.create(user=self.employee)
+        setting.approvers.add(self.custom_approver)
+
+        eligible_ids = set(get_eligible_approvers(self.employee).values_list("pk", flat=True))
+        self.assertEqual(eligible_ids, {self.custom_approver.pk, self.global_approver.pk})
+
+        self.client.force_login(self.employee)
+        resp = self.client.get(reverse("hr:leave_create"))
+        form = resp.context["form"]
+        self.assertEqual(
+            set(form.fields["approver"].queryset.values_list("pk", flat=True)),
+            {self.custom_approver.pk, self.global_approver.pk},
+        )
+
+    def test_empty_setting_means_global_approvers_only(self):
+        LeaveApproverSetting.objects.create(user=self.employee)  # no approvers
+
+        eligible_ids = set(get_eligible_approvers(self.employee).values_list("pk", flat=True))
+        # the org approver is NOT added back; empty list is meaningful
+        self.assertEqual(eligible_ids, {self.global_approver.pk})
+
+        self.client.force_login(self.employee)
+        resp = self.client.get(reverse("hr:leave_create"))
+        form = resp.context["form"]
+        self.assertEqual(
+            set(form.fields["approver"].queryset.values_list("pk", flat=True)),
+            {self.global_approver.pk},
+        )
+        self.assertIsNone(form.fields["approver"].initial)
+
+    def test_no_setting_keeps_default_behavior(self):
+        eligible_ids = set(get_eligible_approvers(self.employee).values_list("pk", flat=True))
+        self.assertIn(self.manager.pk, eligible_ids)
+        self.assertIn(self.global_approver.pk, eligible_ids)
+
+        self.client.force_login(self.employee)
+        resp = self.client.get(reverse("hr:leave_create"))
+        form = resp.context["form"]
+        self.assertEqual(form.fields["approver"].initial, self.manager.pk)
+
+    def test_configured_approver_can_see_and_approve_assigned_leave(self):
+        setting = LeaveApproverSetting.objects.create(user=self.employee)
+        setting.approvers.add(self.custom_approver)
+        leave = LeaveApplication.objects.create(
+            applicant=self.employee,
+            leave_type="sick",
+            start_date=date(2026, 2, 14),
+            end_date=date(2026, 2, 15),
+            reason="自定义审批",
+            approver=self.custom_approver,
+        )
+        leave.submit()
+        leave.save()
+
+        pending_ids = set(get_pending_leaves_for_approver(self.custom_approver).values_list("pk", flat=True))
+        self.assertIn(leave.pk, pending_ids)
+        self.assertTrue(can_approve_application(self.custom_approver, leave))
+
+        self.client.force_login(self.custom_approver)
+        resp = self.client.get(reverse("hr:leave_list"))
+        self.assertContains(resp, "自定义审批")
+        resp_dashboard = self.client.get(reverse("index"))
+        self.assertContains(resp_dashboard, "自定义审批")
+
+        resp2 = self.client.post(reverse("hr:leave_approve", args=[leave.pk]), follow=True)
+        self.assertEqual(resp2.status_code, 200)
+        leave = LeaveApplication.objects.get(pk=leave.pk)
+        self.assertEqual(leave.status, LeaveApplication.STATUS_APPROVED)
+        self.assertEqual(leave.approver, self.custom_approver)
+        self.assertEqual(leave.reviewer, self.custom_approver)
+
+    def test_configured_approver_cannot_see_or_approve_unassigned_leave(self):
+        setting = LeaveApproverSetting.objects.create(user=self.employee)
+        setting.approvers.add(self.custom_approver)
+        other_employee = User.objects.create_user(
+            username="other_employee", password="pwd", department=self.department
+        )
+        leave = LeaveApplication.objects.create(
+            applicant=other_employee,
+            leave_type="sick",
+            start_date=date(2026, 2, 14),
+            end_date=date(2026, 2, 15),
+            reason="别人的申请",
+            approver=self.manager,
+        )
+        leave.submit()
+        leave.save()
+
+        pending_ids = set(get_pending_leaves_for_approver(self.custom_approver).values_list("pk", flat=True))
+        self.assertNotIn(leave.pk, pending_ids)
+        self.assertFalse(can_approve_application(self.custom_approver, leave))
+
+    # ---------- admin ----------
+
+    def test_admin_add_form_prefills_user_and_default_approver(self):
+        self.client.force_login(self.admin_user)
+        url = f"{reverse('admin:hr_leaveapproversetting_add')}?user={self.employee.pk}"
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["adminform"].form
+        self.assertEqual(form.initial.get("user"), str(self.employee.pk))
+        self.assertEqual(form.initial.get("approvers"), [str(self.manager.pk)])
+        # the dept head is rendered as selected in the filter_horizontal widget
+        self.assertContains(resp, f'<option value="{self.manager.pk}" selected>')
+
+    def test_admin_add_form_without_user_param_has_no_initial(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse("admin:hr_leaveapproversetting_add"))
+        self.assertEqual(resp.status_code, 200)
+        form = resp.context["adminform"].form
+        self.assertNotIn("user", form.initial)
+        self.assertNotIn("approvers", form.initial)
+
+    def test_changeform_initial_data_prefills_parent_manager_for_department_head(self):
+        # the manager IS the department head, so the default is the parent department's head
+        rf = RequestFactory()
+        request = rf.get(f"/?user={self.manager.pk}")
+        admin_instance = LeaveApproverSettingAdmin(LeaveApproverSetting, admin.site)
+        initial = admin_instance.get_changeform_initial_data(request)
+        self.assertEqual(initial.get("user"), str(self.manager.pk))
+        self.assertEqual(initial.get("approvers"), [str(self.parent_manager.pk)])
+
+    def test_changeform_initial_data_no_org_approver(self):
+        no_dept_user = User.objects.create_user(username="no_dept_admin_test", password="pwd")
+        rf = RequestFactory()
+        request = rf.get(f"/?user={no_dept_user.pk}")
+        admin_instance = LeaveApproverSettingAdmin(LeaveApproverSetting, admin.site)
+        initial = admin_instance.get_changeform_initial_data(request)
+        self.assertEqual(initial.get("user"), str(no_dept_user.pk))
+        self.assertNotIn("approvers", initial)
+
+    def test_user_admin_changelist_configure_link(self):
+        self.client.force_login(self.admin_user)
+        resp = self.client.get(reverse("admin:core_user_changelist"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Configure")
+        self.assertContains(resp, f"?user={self.employee.pk}")
+
+        setting = LeaveApproverSetting.objects.create(user=self.employee)
+        setting.approvers.add(self.custom_approver)
+        resp2 = self.client.get(reverse("admin:core_user_changelist"))
+        self.assertContains(resp2, "1 approver(s)")
+        self.assertContains(resp2, reverse("admin:hr_leaveapproversetting_change", args=[setting.pk]))

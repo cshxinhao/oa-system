@@ -25,13 +25,20 @@ def get_org_approver(user):
 def get_eligible_approvers(user):
     """
     Returns a QuerySet of users the applicant can pick as approver:
-    the department-based approver plus all global approvers, excluding
-    the applicant themselves.
+    the per-user configured list (LeaveApproverSetting) if a row exists,
+    otherwise the department-based approver; plus all global approvers,
+    excluding the applicant themselves.
+    An existing setting row with an empty approver list is meaningful:
+    only global approvers are eligible then (no fallback to org approver).
     """
     ids = set()
-    org = get_org_approver(user)
-    if org:
-        ids.add(org.pk)
+    setting = getattr(user, 'leave_approver_setting', None)
+    if setting is not None:
+        ids.update(setting.approvers.values_list('pk', flat=True))
+    else:
+        org = get_org_approver(user)
+        if org:
+            ids.add(org.pk)
     ids.update(
         User.objects.filter(can_approve_all_leaves=True).values_list('pk', flat=True)
     )

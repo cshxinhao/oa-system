@@ -34,7 +34,7 @@ class LeaveApplicationForm(forms.ModelForm):
         queryset=User.objects.none(),
         required=False,
         label="Approver",
-        help_text="Choose your approver: your department manager, or a global approver.",
+        help_text="Choose your approver from your eligible approvers.",
         widget=forms.Select(attrs={'class': 'form-select'}),
         error_messages={'invalid_choice': 'The selected approver is not eligible to approve this application. Please choose again.'},
     )
@@ -69,7 +69,7 @@ class LeaveApplicationForm(forms.ModelForm):
             # a value was submitted but failed the queryset check (invalid_choice)
             return None
         if not self.eligible_ids:
-            raise forms.ValidationError("No eligible approver is available. Please contact an administrator to set up a department manager or a global approver.")
+            raise forms.ValidationError("No eligible approver is available. Please contact an administrator to configure your eligible approvers.")
         raise forms.ValidationError("Please select an approver.")
 
     def clean(self):

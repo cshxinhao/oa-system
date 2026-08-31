@@ -109,7 +109,7 @@ oa-system/
 - **请假类型**：病假、年假、生日假、产假、陪产假、恩恤假、无薪假
 - **半天假**：支持选择上午/下午
 - **不连续日期**：通过 `LeaveApplicationDate` 存储多天，不要求连续日期
-- **审批人选择**：提交时从候选列表选择审批人（部门负责人；申请人本人是部门负责人时为其上级部门负责人 + 全局审批人），表单预选部门负责人；全局审批人（`User.can_approve_all_leaves`，超管在 admin 后台设置）可审批所有请假，无部门员工也能通过全局审批人完成审批
+- **审批人选择**：提交时从候选列表选择审批人（部门负责人；申请人本人是部门负责人时为其上级部门负责人 + 全局审批人），表单预选部门负责人；全局审批人（`User.can_approve_all_leaves`，超管在 admin 后台设置）可审批所有请假，无部门员工也能通过全局审批人完成审批；亦可在 admin 后台（`Hr → Leave approver settings` 或 `Core → Users` 的 Leave Approvers 链接）按人为员工配置候选审批人（`LeaveApproverSetting`，新增行默认预填部门负责人），配置后完全取代默认组织路由，列表留空表示仅全局审批人，全局审批人始终自动并入
 - **审批留痕**：`approver` 为员工提交时选择的审批人，提交后不变；`reviewer` 记录实际处理（批准/拒绝）的人——全局审批人或超管代批时二者可能不同
 - **年假额度**：`LeaveQuota` 按人按年按假种设置额度（admin 后台维护，`leave_type` 字段预留未来其他假种额度），已批准的年假自动计入已用；提交年假时余额不足禁止提交并提示；列表页最左侧 **Leave Quota** tab 展示本人全部额度（类型/年份/总额/已用/剩余），"我的申请" tab 显示年假使用 tag，待审批 tab 显示申请人的年假使用情况
 - **工作日计算**：所有假种的请假天数均**排除周末**（按周一至周五计算，年假额度扣减与提交校验同此规则）；年假纯周末区间禁止提交
@@ -160,6 +160,7 @@ Department ──┬── User (members)
 
 User ──┬── LeaveApplication (applicant / approver / reviewer)
        ├── LeaveQuota (user / year)
+       ├── LeaveApproverSetting (user 1:1, approvers M2M)
        ├── RoomBooking (organizer)
        ├── ReimbursementRequest (requester / checker / approver)
        ├── Notice (author)
@@ -206,7 +207,7 @@ ReimbursementRequest ─── ExpenseItem
 
 ### 4. 审批路由
 
-请假采用「员工从候选列表自选审批人」的方式：候选 = 部门负责人（申请人本人是部门负责人时为其上级部门负责人）+ 全局审批人（`User.can_approve_all_leaves`）。审批权限检查同时保留组织层级规则，因此部门负责人、全局审批人、超管均可在待审批列表处理。报销仍采用「部门负责人 → 上级部门负责人」的层级路由规则。
+请假采用「员工从候选列表自选审批人」的方式：候选 = 部门负责人（申请人本人是部门负责人时为其上级部门负责人）+ 全局审批人（`User.can_approve_all_leaves`）。自 2026-08-31 起候选列表支持按人配置（`LeaveApproverSetting`）：有配置时以配置为准（列表可为空 = 仅全局审批人），无配置时回退到组织路由；全局审批人两种情况下都自动并入。审批权限检查同时保留组织层级规则，因此部门负责人、全局审批人、超管均可在待审批列表处理。报销仍采用「部门负责人 → 上级部门负责人」的层级路由规则。
 
 ---
 

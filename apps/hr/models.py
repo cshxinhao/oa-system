@@ -173,3 +173,33 @@ class LeaveQuota(models.Model):
     @property
     def remaining_days(self):
         return self.total_days - self.used_days
+
+
+class LeaveApproverSetting(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("User"),
+        on_delete=models.CASCADE,
+        related_name='leave_approver_setting',
+    )
+    approvers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        verbose_name=_("Eligible Approvers"),
+        blank=True,
+        related_name='leave_approver_settings_for',
+        help_text=_(
+            "Users this employee can pick as approver. Replaces the default "
+            "department-head routing. Leave empty to allow only global approvers. "
+            "Global approvers (Can Approve All Leaves) are always eligible and "
+            "do not need to be listed here."
+        ),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = _("Leave Approver Setting")
+        verbose_name_plural = _("Leave Approver Settings")
+
+    def __str__(self):
+        return f"{self.user} ({self.approvers.count()} approvers)"
