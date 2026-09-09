@@ -93,6 +93,49 @@ cp /opt/oa-system/current/deploy/.env.example /opt/oa-system/.env
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | 带 `https://` 前缀的域名 |
 | `DJANGO_SQLITE_PATH` | 指向数据盘：`/data/oa-system/db.sqlite3` |
 | `DJANGO_MEDIA_ROOT` | 指向数据盘：`/data/oa-system/media` |
+| `EMAIL_HOST` / `EMAIL_PORT` | M365 SMTP：`smtp.office365.com` / `587`（见下方「邮件通知」章节） |
+| `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | `leave@avenue.limited` / M365 **应用密码**（非邮箱登录密码，见下方章节） |
+| `EMAIL_DEFAULT_FROM` | 发件人：`leave@avenue.limited` |
+| `SITE_URL` | 系统对外地址：`https://oasystem.avenue.limited`（用于邮件中的链接） |
+
+### 邮件通知（Microsoft 365 SMTP）
+
+请假审批邮件通过 `leave@avenue.limited`（M365 邮箱）的 SMTP 发送。未配置 `EMAIL_HOST` 时邮件仅打印到控制台（开发环境默认行为）。
+
+#### 1. 启用 SMTP AUTH（一次性）
+
+2020 年后新建的 M365 租户默认禁用 SMTP AUTH（开启 Security defaults 时也会被阻止）。需在 Exchange admin center → Settings → Mail flow 中开启 "Turn on SMTP AUTH"，并确保该邮箱未被单独禁用：
+
+```powershell
+Set-Mailbox -Identity leave@avenue.limited -SmtpClientAuthenticationDisabled $false
+```
+
+#### 2. 生成应用密码
+
+M365 不支持直接用邮箱登录密码走 SMTP。在 Microsoft Entra admin center → Users → leave@avenue.limited → Security info → Add sign-in method → App password 生成应用密码，填入 `/opt/oa-system/.env` 的 `EMAIL_HOST_PASSWORD`。
+
+#### 3. 重启生效
+
+修改 `.env` 后重启服务（EnvironmentFile 在重启时重新读取）：
+
+```bash
+sudo systemctl restart oa-system
+```
+
+#### 4. SMTP 冒烟测试
+
+```bash
+cd /opt/oa-system/current
+set -a
+. /opt/oa-system/.env
+set +a
+sudo -u www-data /opt/oa-system/venv/bin/python manage.py shell -c \
+  "from django.core.mail import send_mail; send_mail('OA mail test', 'Test body', 'leave@avenue.limited', ['your-address@avenue.limited'], fail_silently=False)"
+```
+
+收到测试邮件即表示配置正确。
+
+> 邮件发送失败不会影响业务流程（失败仅记录日志，不向用户报错）。
 
 ---
 
@@ -297,4 +340,7 @@ sudo tail -f /var/log/nginx/error.log
 
 # 备份日志
 sudo tail -f /var/log/oa-backup.log
+
+# 邮件发送失败日志
+sudo journalctl -u oa-system -f | grep "Failed to send"
 ```

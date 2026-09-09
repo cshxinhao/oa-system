@@ -10,6 +10,7 @@ from .models import LeaveApplication
 from .forms import LeaveApplicationForm
 from .permissions import get_pending_leaves_for_approver, can_approve_application
 from .services import quota_summary, quota_summaries
+from .mail import notify_approver_of_pending_leave, notify_applicant_of_outcome
 
 class LeaveListView(LoginRequiredMixin, ListView):
     model = LeaveApplication
@@ -91,6 +92,8 @@ class LeaveCreateView(LoginRequiredMixin, CreateView):
                 
                 self.object.submit()
                 self.object.save()
+                leave = self.object  # local capture, avoids late-binding surprises
+                transaction.on_commit(lambda: notify_approver_of_pending_leave(leave))
         except TransitionNotAllowed:
             form.add_error(None, "The application cannot be submitted at this time. Please refresh and try again.")
             return self.form_invalid(form)
@@ -113,6 +116,7 @@ class LeaveApproveView(LoginRequiredMixin, View):
                 leave.approve()
                 leave.reviewer = request.user
                 leave.save()
+                transaction.on_commit(lambda: notify_applicant_of_outcome(leave))
         except TransitionNotAllowed:
             messages.error(request, "The application status has changed and it can no longer be approved.")
             return redirect('hr:leave_list')
@@ -136,6 +140,7 @@ class LeaveRejectView(LoginRequiredMixin, View):
                 leave.reject()
                 leave.reviewer = request.user
                 leave.save()
+                transaction.on_commit(lambda: notify_applicant_of_outcome(leave))
         except TransitionNotAllowed:
             messages.error(request, "The application status has changed and it can no longer be rejected.")
             return redirect('hr:leave_list')
