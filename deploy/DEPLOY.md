@@ -95,17 +95,19 @@ cp /opt/oa-system/current/deploy/.env.example /opt/oa-system/.env
 | `DJANGO_MEDIA_ROOT` | 指向数据盘：`/data/oa-system/media` |
 | `EMAIL_HOST` / `EMAIL_PORT` | Resend SMTP：`smtp.resend.com` / `587`（见下方「邮件通知」章节） |
 | `EMAIL_HOST_USER` / `EMAIL_HOST_PASSWORD` | `resend` / Resend 的 **API Key**（见下方章节） |
-| `EMAIL_DEFAULT_FROM` | 发件人：`leave@avenue.limited` |
+| `EMAIL_DEFAULT_FROM` | 发件人：`leave@email.avenue.limited` |
 | `SITE_URL` | 系统对外地址：`https://oasystem.avenue.limited`（用于邮件中的链接） |
 
 ### 邮件通知（Resend）
 
-请假审批邮件通过 [Resend](https://resend.com)（第三方 SMTP 中继，底层 Amazon SES）发送，发件地址 `leave@avenue.limited`。未配置 `EMAIL_HOST` 时邮件仅打印到控制台（开发环境默认行为）。
+请假审批邮件通过 [Resend](https://resend.com)（第三方 SMTP 中继，底层 Amazon SES）发送，发件地址 `leave@email.avenue.limited`。未配置 `EMAIL_HOST` 时邮件仅打印到控制台（开发环境默认行为）。
 
 #### 1. 前提：域名验证与 API Key
 
-- 发件域名 `avenue.limited` 需已在 Resend 控制台验证（在域名 DNS 中添加 Resend 提供的 SPF/DKIM 记录；公司已有项目使用 Resend 时通常已验证）
+- 发件域名使用 `email.avenue.limited`（子域名），已在公司 Resend 账号中验证，无需额外操作
 - 在 Resend 控制台创建 API Key，填入 `/opt/oa-system/.env` 的 `EMAIL_HOST_PASSWORD`（只放服务器 `.env`，不要提交进仓库）
+
+> 如以后想改用主域名 `avenue.limited` 发件：Resend 控制台 → Domains → Add Domain 验证主域名。注意：① 域名已有 M365 的 MX 记录，Resend 的验证 MX（`send.resend.com`）可与之共存，不影响收信；② **每个域名只允许一条 SPF 记录**，需把 `include:amazonses.com` 合并进现有的 SPF（不能新增第二条）。验证通过后把 `EMAIL_DEFAULT_FROM` 改回 `leave@avenue.limited` 并重启即可。
 
 #### 2. 重启生效
 
@@ -122,11 +124,21 @@ cd /opt/oa-system/current
 set -a
 . /opt/oa-system/.env
 set +a
-sudo -u www-data /opt/oa-system/venv/bin/python manage.py shell -c \
-  "from django.core.mail import send_mail; send_mail('OA mail test', 'Test body', 'leave@avenue.limited', ['your-address@avenue.com'], fail_silently=False)"
+/opt/oa-system/venv/bin/python manage.py shell -c \
+  "from django.core.mail import send_mail; send_mail('OA mail test', 'Test body', 'leave@email.avenue.limited', ['your-address@avenue.com'], fail_silently=False)"
 ```
 
 收到测试邮件即表示配置正确。发信记录可在 Resend 控制台查看（免费版保留 1 天）。
+
+> ⚠️ **不要用 `sudo -u www-data` 执行上面的命令**：sudo 默认清空环境变量，`.env` 加载的值传不进 Python 进程，邮件会被 console 后端打印出来而不是真正发送。如果必须用 www-data 身份，需显式透传环境变量：
+>
+> ```bash
+> sudo -u www-data env $(grep -v '^#' /opt/oa-system/.env | grep -v '^$' | xargs) \
+>   /opt/oa-system/venv/bin/python manage.py shell -c \
+>   "from django.core.mail import send_mail; send_mail('OA mail test', 'Test body', 'leave@email.avenue.limited', ['your-address@avenue.com'], fail_silently=False)"
+> ```
+>
+> 判断标准：真正发出时命令**无任何输出**；如果打印出一整段 `Content-Type: text/plain...` 邮件内容，说明走了 console 后端，没有真正发送。
 
 > 邮件发送失败不会影响业务流程（失败仅记录日志，不向用户报错）。
 
