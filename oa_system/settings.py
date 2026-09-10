@@ -207,8 +207,8 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
 
 # Email
-# Production sends via Microsoft 365 SMTP (leave@avenue.limited). When
-# EMAIL_HOST is not set (e.g. local dev), emails print to the console instead.
+# Production sends via Resend (smtp.resend.com). When EMAIL_HOST is not set
+# (e.g. local dev), emails print to the console instead.
 if os.environ.get("EMAIL_HOST"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 else:
