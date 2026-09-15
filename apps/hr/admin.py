@@ -1,5 +1,10 @@
+import csv
+
 from django.contrib import admin
 from django.contrib.auth import get_user_model
+from django.core.exceptions import PermissionDenied
+from django.http import HttpResponse
+from django.urls import path
 
 from .models import LeaveApplication, LeaveQuota, LeaveApproverSetting
 from .permissions import get_org_approver
@@ -11,7 +16,53 @@ class LeaveApplicationAdmin(admin.ModelAdmin):
     list_display = ('applicant', 'leave_type', 'start_date', 'end_date', 'status', 'approver', 'reviewer', 'created_at')
     list_filter = ('status', 'leave_type', 'created_at')
     search_fields = ('applicant__username', 'reason')
-    readonly_fields = ('status',) # 状态由工作流控制
+    readonly_fields = ('status',) # status is controlled by the workflow
+    change_list_template = 'admin/hr/leaveapplication/change_list.html'
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "export/",
+                self.admin_site.admin_view(self.export_csv),
+                name="hr_leaveapplication_export",
+            ),
+        ]
+        return custom_urls + urls
+
+    def export_csv(self, request):
+        if not self.has_view_or_change_permission(request):
+            raise PermissionDenied
+
+        # Respect the current changelist filters/search, ignore pagination
+        queryset = self.get_changelist_instance(request).get_queryset(request)
+        queryset = queryset.select_related("applicant", "approver", "reviewer").prefetch_related("dates")
+
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="leave_applications.csv"'
+        response.write("﻿")  # UTF-8 BOM so Excel opens non-ASCII names correctly
+
+        writer = csv.writer(response)
+        writer.writerow([
+            "ID", "Applicant", "Leave Type", "Half Day", "Start Date", "End Date",
+            "Duration (Days)", "Status", "Approver", "Reviewer", "Reason", "Created At",
+        ])
+        for leave in queryset:
+            writer.writerow([
+                leave.pk,
+                leave.applicant.get_full_name() or leave.applicant.username,
+                leave.get_leave_type_display(),
+                f"Yes ({leave.get_half_day_period_display()})" if leave.is_half_day and leave.half_day_period else "No",
+                leave.start_date,
+                leave.end_date,
+                leave.duration_days,
+                leave.get_status_display(),
+                (leave.approver.get_full_name() or leave.approver.username) if leave.approver else "",
+                (leave.reviewer.get_full_name() or leave.reviewer.username) if leave.reviewer else "",
+                leave.reason,
+                leave.created_at.strftime("%Y-%m-%d %H:%M"),
+            ])
+        return response
 
 @admin.register(LeaveQuota)
 class LeaveQuotaAdmin(admin.ModelAdmin):
