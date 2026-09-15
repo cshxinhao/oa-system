@@ -1,11 +1,28 @@
 from __future__ import annotations
 
-from datetime import datetime, time, timedelta
+from datetime import datetime
 
 from django import forms
 from django.utils import timezone
 
 from .models import MeetingRoom, RoomBooking
+
+
+def half_hour_time_choices():
+    """Half-hour slots during office hours (09:00, 09:30, ... 18:00)."""
+    choices = [(f"{h:02d}:{m:02d}", f"{h:02d}:{m:02d}") for h in range(9, 18) for m in (0, 30)]
+    choices.append(("18:00", "18:00"))
+    return choices
+
+
+class HalfHourTimeSelect(forms.Select):
+    def __init__(self, attrs=None, include_blank=False):
+        attrs = dict(attrs or {})
+        attrs.setdefault("class", "form-select")
+        choices = half_hour_time_choices()
+        if include_blank:
+            choices = [("", "---------")] + choices
+        super().__init__(attrs=attrs, choices=choices)
 
 
 class RoomBookingForm(forms.ModelForm):
@@ -15,11 +32,11 @@ class RoomBookingForm(forms.ModelForm):
     )
     start_time = forms.TimeField(
         label="Start Time",
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        widget=HalfHourTimeSelect(include_blank=True),
     )
     end_time = forms.TimeField(
         label="End Time",
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        widget=HalfHourTimeSelect(include_blank=True),
     )
 
     class Meta:
@@ -39,11 +56,11 @@ class RoomBookingForm(forms.ModelForm):
             tz = timezone.get_current_timezone()
             start = self.instance.start_at.astimezone(tz)
             self.fields["booking_date"].initial = start.date()
-            self.fields["start_time"].initial = start.time()
+            self.fields["start_time"].initial = start.strftime("%H:%M")
         if self.instance and self.instance.end_at:
             tz = timezone.get_current_timezone()
             end = self.instance.end_at.astimezone(tz)
-            self.fields["end_time"].initial = end.time()
+            self.fields["end_time"].initial = end.strftime("%H:%M")
 
     def clean(self):
         cleaned_data = super().clean()
@@ -129,14 +146,14 @@ class RoomDayFreeSlotsForm(forms.Form):
     day_start = forms.TimeField(
         label="Day Start",
         required=False,
-        initial=time(9, 0),
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        initial="09:00",
+        widget=HalfHourTimeSelect(include_blank=True),
     )
     day_end = forms.TimeField(
         label="Day End",
         required=False,
-        initial=time(18, 0),
-        widget=forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        initial="18:00",
+        widget=HalfHourTimeSelect(include_blank=True),
     )
 
     def clean(self):

@@ -131,13 +131,15 @@ class BookedRoomsView(LoginRequiredMixin, TemplateView):
                 end_at__date__gte=timezone.now().date(),
             )
             .select_related("room", "organizer")
-            .order_by("room__name", "start_at")
+            .order_by("start_at")
         )
 
-    def _group_by_room(self, bookings):
+    def _group_by_date(self, bookings):
         return [
-            {"room": room, "bookings": list(room_bookings)}
-            for room, room_bookings in groupby(bookings, key=lambda b: b.room)
+            {"date": day, "bookings": list(day_bookings)}
+            for day, day_bookings in groupby(
+                bookings, key=lambda b: timezone.localtime(b.start_at).date()
+            )
         ]
 
     def get_context_data(self, **kwargs):
@@ -160,11 +162,11 @@ class BookedRoomsView(LoginRequiredMixin, TemplateView):
                         end_at__date__gte=start_date,
                     )
                     .select_related("room", "organizer")
-                    .order_by("room__name", "start_at")
+                    .order_by("start_at")
                 )
-                context["booked_groups"] = self._group_by_room(bookings)
+                context["booked_groups"] = self._group_by_date(bookings)
         elif not has_params:
             # First visit: show all booked rooms
-            context["booked_groups"] = self._group_by_room(self._get_all_bookings())
+            context["booked_groups"] = self._group_by_date(self._get_all_bookings())
 
         return context

@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -162,4 +162,86 @@ class RoomBookingApiTests(TestCase):
         self.client.force_authenticate(user=self.user2)
         resp = self.client.post(f"/api/v1/room-bookings/{booking.id}/cancel/")
         self.assertEqual(resp.status_code, 404)
+
+
+class BookedRoomsViewTests(TestCase):
+    def setUp(self):
+        self.User = get_user_model()
+        self.user = self.User.objects.create_user(username="u1", password="pass12345")
+        self.room1 = MeetingRoom.objects.create(name="A101", location="1F", is_active=True)
+        self.room2 = MeetingRoom.objects.create(name="B202", location="2F", is_active=True)
+        self.tz = timezone.get_current_timezone()
+
+    def _dt(self, day: date, t: time) -> datetime:
+        return timezone.make_aware(datetime.combine(day, t), timezone=self.tz)
+
+    def test_booked_rooms_grouped_by_date_ordered_by_time(self):
+        today = timezone.now().date()
+        day1 = today + timedelta(days=1)
+        day2 = today + timedelta(days=2)
+
+        # create out of order: day2 first, then day1 with times out of order
+        RoomBooking.objects.create(
+            room=self.room1, organizer=self.user, title="d2-morning",
+            start_at=self._dt(day2, time(9, 0)), end_at=self._dt(day2, time(10, 0)),
+        )
+        RoomBooking.objects.create(
+            room=self.room2, organizer=self.user, title="d1-afternoon",
+            start_at=self._dt(day1, time(15, 0)), end_at=self._dt(day1, time(16, 0)),
+        )
+        RoomBooking.objects.create(
+            room=self.room1, organizer=self.user, title="d1-morning",
+            start_at=self._dt(day1, time(9, 30)), end_at=self._dt(day1, time(10, 30)),
+        )
+
+        self.client.force_login(self.user)
+        resp = self.client.get("/meeting/bookings/booked/")
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+
+        # date group headers appear in ascending order
+        pos1 = html.find(day1.isoformat())
+        pos2 = html.find(day2.isoformat())
+        self.assertNotEqual(pos1, -1)
+        self.assertNotEqual(pos2, -1)
+        self.assertLess(pos1, pos2)
+
+        # same-day rows ordered by start time
+        self.assertLess(html.find("d1-morning"), html.find("d1-afternoon"))
+
+        # room names shown in rows
+        self.assertIn("A101", html)
+        self.assertIn("B202", html)
+
+    def test_booked_rooms_search_grouped_by_date_only_in_range(self):
+        day1 = date(2026, 2, 15)
+        day2 = date(2026, 2, 16)
+        day3 = date(2026, 2, 17)
+        RoomBooking.objects.create(
+            room=self.room1, organizer=self.user, title="d1-booking",
+            start_at=self._dt(day1, time(10, 0)), end_at=self._dt(day1, time(11, 0)),
+        )
+        RoomBooking.objects.create(
+            room=self.room1, organizer=self.user, title="d2-booking",
+            start_at=self._dt(day2, time(10, 0)), end_at=self._dt(day2, time(11, 0)),
+        )
+        RoomBooking.objects.create(
+            room=self.room1, organizer=self.user, title="d3-booking",
+            start_at=self._dt(day3, time(10, 0)), end_at=self._dt(day3, time(11, 0)),
+        )
+
+        self.client.force_login(self.user)
+        resp = self.client.get(
+            "/meeting/bookings/booked/", {"start_date": "2026-02-15", "end_date": "2026-02-16"}
+        )
+        self.assertEqual(resp.status_code, 200)
+        html = resp.content.decode()
+
+        self.assertIn("2026-02-15", html)
+        self.assertIn("2026-02-16", html)
+        self.assertNotIn("2026-02-17", html)
+        self.assertIn("d1-booking", html)
+        self.assertIn("d2-booking", html)
+        self.assertNotIn("d3-booking", html)
+        self.assertLess(html.find("2026-02-15"), html.find("2026-02-16"))
 
