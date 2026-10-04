@@ -138,3 +138,66 @@ h1, h2, h3, h4, h5, h6 {
     border-top: 1px solid #dee2e6;
     color: #6c757d;
 }
+
+/* Leave Schedule calendar */
+.leave-calendar {
+    table-layout: fixed;
+}
+
+.leave-calendar th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.leave-cal-cell {
+    height: 120px;
+    vertical-align: top;
+}
+
+.leave-cal-day {
+    text-align: right;
+    font-size: .85rem;
+    color: #495057;
+    margin-bottom: .25rem;
+}
+
+.leave-cal-cell.weekend {
+    background-color: #f6f8fb;
+}
+
+.leave-cal-cell.today {
+    background-color: #e7f1ff;
+}
+
+.leave-cal-cell.today .leave-cal-day {
+    display: inline-block;
+    float: right;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    background-color: #0d6efd;
+    color: #fff;
+    border-radius: 50%;
+}
+
+.leave-cal-cell.outside-month {
+    background-color: #f8f9fa;
+}
+
+.leave-cal-cell.outside-month .leave-cal-day {
+    color: #adb5bd;
+}
+
+.leave-cal-body {
+    max-height: 88px;
+    overflow-y: auto;
+}
+
+.leave-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}

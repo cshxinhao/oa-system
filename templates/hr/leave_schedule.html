@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block page_title %}Leave Schedule{% endblock %}
+
+{% block actions %}
+<a href="{% url 'hr:leave_create' %}" class="btn btn-sm btn-outline-primary">
+    <i class="bi bi-plus-lg"></i> Apply for Leave
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Department filter -->
+<div class="card shadow-sm mb-3">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-center">
+            <input type="hidden" name="year" value="{{ year }}">
+            <input type="hidden" name="month" value="{{ month }}">
+            <div class="col-auto">
+                <label for="department" class="col-form-label"><i class="bi bi-funnel me-1"></i>Department</label>
+            </div>
+            <div class="col-auto">
+                <select name="department" id="department" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">All Departments</option>
+                    {% for dep in departments %}
+                    <option value="{{ dep.pk }}" {% if dep.pk == selected_department %}selected{% endif %}>{{ dep.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Month navigation -->
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'hr:leave_schedule' %}?year={{ prev_year }}&amp;month={{ prev_month }}{{ department_param }}">
+        <i class="bi bi-chevron-left"></i> {{ prev_month_name }}
+    </a>
+    <h4 class="mb-0 text-center">{{ month_label }}</h4>
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'hr:leave_schedule' %}?year={{ next_year }}&amp;month={{ next_month }}{{ department_param }}">
+        {{ next_month_name }} <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+
+<!-- Calendar grid -->
+<div class="table-responsive">
+    <table class="table table-bordered leave-calendar align-middle">
+        <thead>
+            <tr class="text-center">
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+                <th>Sat</th>
+                <th>Sun</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in weeks %}
+            <tr>
+                {% for cell in week %}
+                <td class="leave-cal-cell{% if not cell.in_month %} outside-month{% endif %}{% if cell.is_weekend %} weekend{% endif %}{% if cell.is_today %} today{% endif %}">
+                    <div class="leave-cal-day">{{ cell.date.day }}</div>
+                    <div class="leave-cal-body">
+                        {% for entry in cell.entries|slice:":8" %}
+                        <div class="leave-entry small text-truncate" title="{{ entry.name }} - {{ entry.leave_type_display }}">
+                            <span class="leave-dot {{ entry.badge_class }}"></span>{{ entry.name }}{% if entry.is_half_day %} <span class="text-muted">({{ entry.half_day_period|upper }})</span>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if cell.entries|length > 8 %}
+                    <div class="small text-muted">+{{ cell.entries|length|add:"-8" }} more</div>
+                    {% endif %}
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if total_entries == 0 %}
+<div class="card shadow-sm">
+    <div class="card-body text-center text-muted py-5">
+        <i class="bi bi-calendar-check display-4 d-block mb-3"></i>
+        <p class="mb-0">No approved leave in this month.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Legend -->
+<div class="card shadow-sm mt-3">
+    <div class="card-body py-2 d-flex flex-wrap gap-3 small">
+        {% for t in leave_type_legend %}
+        <span><span class="leave-dot {{ t.badge_class }}"></span> {{ t.label }}</span>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

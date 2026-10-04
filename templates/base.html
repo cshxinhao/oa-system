@@ -76,8 +76,13 @@
                 </a>
               </li>
               <li class="nav-item">
-                <a class="nav-link {% if 'hr' in request.path %}active{% endif %}" href="{% url 'hr:leave_list' %}">
+                <a class="nav-link {% if 'hr' in request.path and request.resolver_match.url_name != 'leave_schedule' %}active{% endif %}" href="{% url 'hr:leave_list' %}">
                   <i class="bi bi-calendar-check"></i> Leave Management
+                </a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'leave_schedule' %}active{% endif %}" href="{% url 'hr:leave_schedule' %}">
+                  <i class="bi bi-calendar-week"></i> Leave Schedule
                 </a>
               </li>
               <li class="nav-item">

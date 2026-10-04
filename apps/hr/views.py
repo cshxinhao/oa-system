@@ -1,11 +1,18 @@
-from django.views.generic import ListView, CreateView, View
+import calendar
+from collections import defaultdict
+from datetime import date, timedelta
+
+from django.views.generic import ListView, CreateView, View, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
+from django.db.models import Q
 from django_fsm import TransitionNotAllowed
+
+from core.models import Department
 from .models import LeaveApplication
 from .forms import LeaveApplicationForm
 from .permissions import get_pending_leaves_for_approver, can_approve_application
@@ -169,3 +176,133 @@ class LeaveWithdrawView(LoginRequiredMixin, View):
 
         messages.info(request, "Leave application withdrawn")
         return redirect('hr:leave_list')
+
+LEAVE_TYPE_BADGE_CLASSES = {
+    LeaveApplication.TYPE_SICK: 'bg-danger',
+    LeaveApplication.TYPE_ANNUAL: 'bg-primary',
+    LeaveApplication.TYPE_BIRTHDAY: 'bg-warning',
+    LeaveApplication.TYPE_MATERNITY: 'bg-info',
+    LeaveApplication.TYPE_PATERNITY: 'bg-success',
+    LeaveApplication.TYPE_COMPASSIONATE: 'bg-secondary',
+    LeaveApplication.TYPE_NO_PAY: 'bg-dark',
+}
+
+
+class LeaveScheduleView(LoginRequiredMixin, TemplateView):
+    """Monthly calendar of approved leave for all employees."""
+    template_name = 'hr/leave_schedule.html'
+
+    def _parse_year_month(self):
+        """Return (year, month) from GET params, defaulting to the current month."""
+        today = date.today()
+        try:
+            year = int(self.request.GET.get('year', today.year))
+            month = int(self.request.GET.get('month', today.month))
+            if not (2000 <= year <= 2100) or not (1 <= month <= 12):
+                raise ValueError
+        except (TypeError, ValueError):
+            return today.year, today.month
+        return year, month
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        year, month = self._parse_year_month()
+        today = date.today()
+
+        month_start = date(year, month, 1)
+        month_end = date(year, month, calendar.monthrange(year, month)[1])
+        prev_first = date(year - 1, 12, 1) if month == 1 else date(year, month - 1, 1)
+        next_first = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+
+        # Department filter (invalid id -> no filter)
+        department = None
+        dep_id = self.request.GET.get('department')
+        if dep_id:
+            department = Department.objects.filter(pk=dep_id).first()
+
+        # Approved leaves overlapping the month.
+        # Branch A: discontinuous leaves with dates rows inside the month.
+        # Branch B: contiguous ranges WITHOUT dates rows overlapping the month
+        #           (also covers half-day leaves: single-day, start_date == end_date).
+        leaves = (
+            LeaveApplication.objects
+            .filter(status=LeaveApplication.STATUS_APPROVED)
+            .filter(
+                Q(dates__date__range=(month_start, month_end))
+                | Q(dates__isnull=True,
+                    start_date__lte=month_end,
+                    end_date__gte=month_start)
+            )
+            .select_related('applicant', 'applicant__department')
+            .prefetch_related('dates')
+            .distinct()
+        )
+        if department:
+            leaves = leaves.filter(applicant__department=department)
+
+        # Expand each application into per-day entries (mirrors services.leave_used_days)
+        entries_by_day = defaultdict(list)
+        for app in leaves:
+            name = app.applicant.get_full_name() or app.applicant.username
+            entry = {
+                'name': name,
+                'leave_type_display': app.get_leave_type_display(),
+                'badge_class': LEAVE_TYPE_BADGE_CLASSES[app.leave_type],
+                'is_half_day': app.is_half_day,
+                'half_day_period': app.half_day_period,  # 'am' / 'pm'
+            }
+            days = set()  # set -> no duplicate day entries
+            if app.is_half_day:
+                if month_start <= app.start_date <= month_end:
+                    days.add(app.start_date)
+            else:
+                rows = [d.date for d in app.dates.all()
+                        if month_start <= d.date <= month_end]
+                if rows:
+                    days.update(rows)
+                else:
+                    low = max(app.start_date, month_start)
+                    high = min(app.end_date, month_end)
+                    if low <= high:  # bounded by the month length (~31 iterations max)
+                        d = low
+                        while d <= high:
+                            days.add(d)
+                            d += timedelta(days=1)
+            for day in days:
+                entries_by_day[day].append(entry)
+
+        for day_entries in entries_by_day.values():
+            day_entries.sort(key=lambda e: e['name'].lower())
+
+        # Monday-first month matrix
+        weeks = []
+        for week in calendar.Calendar(firstweekday=0).monthdatescalendar(year, month):
+            weeks.append([{
+                'date': day,
+                'in_month': day.month == month,
+                'is_today': day == today,
+                'is_weekend': day.weekday() >= 5,
+                'entries': entries_by_day.get(day, []),
+            } for day in week])
+
+        context.update({
+            'year': year,
+            'month': month,
+            'month_label': month_start.strftime('%B %Y'),
+            'prev_year': prev_first.year,
+            'prev_month': prev_first.month,
+            'prev_month_name': prev_first.strftime('%B'),
+            'next_year': next_first.year,
+            'next_month': next_first.month,
+            'next_month_name': next_first.strftime('%B'),
+            'department_param': f'&department={department.pk}' if department else '',
+            'departments': Department.objects.order_by('name'),
+            'selected_department': department.pk if department else None,
+            'weeks': weeks,
+            'total_entries': sum(len(v) for v in entries_by_day.values()),
+            'leave_type_legend': [
+                {'label': label, 'badge_class': LEAVE_TYPE_BADGE_CLASSES[code]}
+                for code, label in LeaveApplication.TYPE_CHOICES
+            ],
+        })
+        return context
