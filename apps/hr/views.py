@@ -185,6 +185,7 @@ LEAVE_TYPE_BADGE_CLASSES = {
     LeaveApplication.TYPE_PATERNITY: 'bg-success',
     LeaveApplication.TYPE_COMPASSIONATE: 'bg-secondary',
     LeaveApplication.TYPE_NO_PAY: 'bg-dark',
+    LeaveApplication.TYPE_BUSINESS_TRIP: 'bg-business-trip',
 }
 
 

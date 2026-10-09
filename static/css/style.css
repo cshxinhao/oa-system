@@ -201,3 +201,7 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: 50%;
     margin-right: 4px;
 }
+
+.bg-business-trip {
+    background-color: #6f42c1;
+}

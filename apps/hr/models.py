@@ -25,7 +25,8 @@ class LeaveApplication(models.Model):
     TYPE_PATERNITY = 'paternity'
     TYPE_COMPASSIONATE = 'compassionate'
     TYPE_NO_PAY = 'no_pay'
-    
+    TYPE_BUSINESS_TRIP = 'business_trip'
+
     TYPE_CHOICES = (
         (TYPE_SICK, _('Sick Leave')),
         (TYPE_ANNUAL, _('Annual Leave')),
@@ -34,6 +35,7 @@ class LeaveApplication(models.Model):
         (TYPE_PATERNITY, _('Paternity Leave')),
         (TYPE_COMPASSIONATE, _('Compassionate Leave')),
         (TYPE_NO_PAY, _('No Pay Leave')),
+        (TYPE_BUSINESS_TRIP, _('Business Trip')),
     )
 
     applicant = models.ForeignKey(
